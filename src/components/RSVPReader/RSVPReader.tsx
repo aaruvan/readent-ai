@@ -6,6 +6,7 @@ import { WordDisplay } from './WordDisplay';
 import { ControlBar } from './ControlBar';
 import { PlaybackControls } from './PlaybackControls';
 import { AISettingsPanel } from './AISettingsPanel';
+import { AIStatusBar, type TextMode } from './AIStatusBar';
 import { useToast } from '@/hooks/use-toast';
 
 interface RSVPReaderProps {
@@ -30,6 +31,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     const [industryMode, setIndustryMode] = useState<IndustryMode>('general');
     const [originalText, setOriginalText] = useState('');
     const [rampUpMultiplier, setRampUpMultiplier] = useState(1);
+    const [textMode, setTextMode] = useState<TextMode>('original');
 
     const {
       words,
@@ -171,12 +173,23 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       const result = await summarizeText(originalText, industryMode, length);
       if (result) {
         setText(result);
+        setTextMode(length);
         toast({
           title: "Summary ready",
           description: `${length === 'brief' ? 'Brief' : 'Detailed'} summary loaded for reading.`,
         });
       }
     }, [originalText, industryMode, summarizeText, setText, toast]);
+
+    // Restore original text
+    const handleRestoreOriginal = useCallback(() => {
+      if (originalText) {
+        setText(originalText);
+        setTextMode('original');
+        clearResults();
+        toast({ title: "Original text restored" });
+      }
+    }, [originalText, setText, clearResults, toast]);
 
     // Keyboard shortcuts
     const handleKeyDown = useCallback(
@@ -209,17 +222,15 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
             if (e.metaKey || e.ctrlKey) return;
             e.preventDefault();
             // Restore original text
-            if (summary && originalText) {
-              setText(originalText);
-              clearResults();
-              toast({ title: "Original text restored" });
+            if (textMode !== 'original' && originalText) {
+              handleRestoreOriginal();
             } else {
               stop();
             }
             break;
         }
       },
-      [togglePlay, skipBackward, skipForward, setWPM, settings.wpm, stop, onClose, summary, originalText, setText, clearResults, toast]
+      [togglePlay, skipBackward, skipForward, setWPM, settings.wpm, stop, onClose, textMode, originalText, handleRestoreOriginal]
     );
 
     useEffect(() => {
@@ -260,6 +271,17 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
               isLookingAway={isLookingAway}
             />
           }
+        />
+        
+        {/* AI Status Bar */}
+        <AIStatusBar
+          smartPacingEnabled={smartPacingEnabled}
+          eyeTrackingEnabled={eyeTrackingEnabled}
+          isLookingAway={isLookingAway}
+          textMode={textMode}
+          onRestoreOriginal={handleRestoreOriginal}
+          isLoading={isAILoading}
+          rampUpMultiplier={rampUpMultiplier}
         />
 
         {/* Main reading area */}
