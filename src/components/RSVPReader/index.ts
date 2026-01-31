@@ -3,3 +3,4 @@ export { WordDisplay } from './WordDisplay';
 export { ControlBar } from './ControlBar';
 export { PlaybackControls } from './PlaybackControls';
 export { AISettingsPanel } from './AISettingsPanel';
+export { AIStatusBar, type TextMode } from './AIStatusBar';
