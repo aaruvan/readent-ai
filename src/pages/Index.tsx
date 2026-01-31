@@ -1,12 +1,250 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useRef } from 'react';
+import { RSVPReader, RSVPReaderRef } from '@/components/RSVPReader';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Zap, BookOpen, Brain, Sparkles, Clock, Eye, Keyboard, ChevronRight } from 'lucide-react';
+
+const SAMPLE_TEXT = `Speed reading is a collection of reading methods which attempt to increase rates of reading without greatly reducing comprehension or retention. Methods include chunking and minimizing subvocalization. The many available speed reading training programs include books, videos, software, and seminars.
+
+The Rapid Serial Visual Presentation technique, or RSVP, displays words one at a time at a fixed position on the screen. This eliminates the need for eye movement, which is one of the main factors limiting reading speed. By focusing on a single point, readers can absorb words faster than traditional reading methods allow.
+
+Studies have shown that the average adult reads at about 200-300 words per minute. With RSVP training, readers can often double or even triple their reading speed while maintaining good comprehension. The key is finding the optimal speed for your personal comprehension level.
+
+AI-enhanced speed reading takes this further by adapting the display timing based on word complexity, punctuation, and semantic importance. Longer words and sentences with complex punctuation automatically receive more display time, while simple, common words flash by quickly.
+
+This adaptive approach mimics how skilled readers naturally adjust their pace—slowing down for difficult concepts and speeding through familiar territory. Combined with AI summarization, readers can choose between reading the full text or a condensed version, making it easier to quickly grasp the main points of any article or document.`;
 
 const Index = () => {
+  const [customText, setCustomText] = useState('');
+  const [activeText, setActiveText] = useState(SAMPLE_TEXT);
+  const [showReader, setShowReader] = useState(false);
+  const readerRef = useRef<RSVPReaderRef>(null);
+
+  const handleStartReading = () => {
+    setShowReader(true);
+    setActiveText(customText || SAMPLE_TEXT);
+  };
+
+  const handleUseSampleText = () => {
+    setCustomText(SAMPLE_TEXT);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Hero Section */}
+      <header className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+        <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+              <Sparkles className="w-4 h-4" />
+              AI-Enhanced Speed Reading
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+              Read faster with{' '}
+              <span className="text-primary">RSVP</span>
+            </h1>
+            
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Rapid Serial Visual Presentation displays words one at a time at your focal point, 
+              eliminating eye movement and dramatically increasing your reading speed.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-4 mb-12">
+              <Button 
+                size="lg" 
+                className="gap-2"
+                onClick={() => setShowReader(true)}
+              >
+                <Zap className="w-5 h-5" />
+                Try Demo
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="gap-2"
+                onClick={() => document.getElementById('input-section')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                <BookOpen className="w-5 h-5" />
+                Add Your Text
+              </Button>
+            </div>
+
+            {/* Feature highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+              <div className="p-6 rounded-xl bg-card border border-border">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
+                  <Clock className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">Adaptive Pacing</h3>
+                <p className="text-sm text-muted-foreground">
+                  Automatically adjusts speed based on word length, punctuation, and complexity
+                </p>
+              </div>
+
+              <div className="p-6 rounded-xl bg-card border border-border">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
+                  <Eye className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">Focal Point Highlight</h3>
+                <p className="text-sm text-muted-foreground">
+                  Orange-highlighted optimal recognition point helps your brain process faster
+                </p>
+              </div>
+
+              <div className="p-6 rounded-xl bg-card border border-border">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
+                  <Keyboard className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-2">Keyboard Controls</h3>
+                <p className="text-sm text-muted-foreground">
+                  Space to play/pause, arrows to navigate, and more shortcuts for power users
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Reader Section */}
+      {showReader && (
+        <section className="py-8 px-4">
+          <div className="container mx-auto max-w-5xl">
+            <div className="h-[500px]">
+              <RSVPReader 
+                ref={readerRef}
+                text={activeText} 
+                onClose={() => setShowReader(false)} 
+              />
+            </div>
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Press <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Space</kbd> to play/pause • 
+              <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono ml-2">←</kbd> 
+              <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">→</kbd> to skip • 
+              <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono ml-2">↑</kbd> 
+              <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">↓</kbd> to adjust speed
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Input Section */}
+      <section id="input-section" className="py-16 px-4">
+        <div className="container mx-auto max-w-3xl">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-2">Paste Your Text</h2>
+            <p className="text-muted-foreground">
+              Enter any text you want to speed read, or use our sample text
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Paste your article, essay, or any text here..."
+              value={customText}
+              onChange={(e) => setCustomText(e.target.value)}
+              className="min-h-[200px] resize-none bg-card"
+            />
+            
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button onClick={handleStartReading} className="gap-2">
+                <Zap className="w-4 h-4" />
+                Start Reading
+              </Button>
+              <Button variant="outline" onClick={handleUseSampleText}>
+                Use Sample Text
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Features Preview */}
+      <section className="py-16 px-4 bg-card/50">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+              <Brain className="w-4 h-4" />
+              Coming Soon
+            </div>
+            <h2 className="text-3xl font-bold mb-4">AI-Powered Features</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              We're building AI enhancements to make speed reading even more effective
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-xl bg-background border border-border">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">AI Summarization</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Condense long articles into key points, then speed read the summary for quick comprehension
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl bg-background border border-border">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Smart Pacing</h3>
+                  <p className="text-sm text-muted-foreground">
+                    LLM-powered semantic analysis slows down at important concepts and speeds through filler
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl bg-background border border-border">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Comprehension Mode</h3>
+                  <p className="text-sm text-muted-foreground">
+                    AI generates quick questions after reading to test and reinforce understanding
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl bg-background border border-border">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <ChevronRight className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Phrase Grouping</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Intelligently groups words into meaningful phrases at semantic boundaries
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-4 border-t border-border">
+        <div className="container mx-auto text-center text-sm text-muted-foreground">
+          <p>
+            RSVP Speed Reader Demo • Built for hackathon demonstration
+          </p>
+          <p className="mt-2">
+            Inspired by SwiftRead and similar speed reading tools
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
