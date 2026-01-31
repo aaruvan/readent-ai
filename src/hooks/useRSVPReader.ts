@@ -6,6 +6,13 @@ interface RSVPSettings {
   fontSize: number;
 }
 
+interface WordPacing {
+  word: string;
+  importance: number;
+  isKeyTerm: boolean;
+  semanticBoundary: boolean;
+}
+
 interface UseRSVPReaderReturn {
   words: string[];
   currentIndex: number;
@@ -15,6 +22,7 @@ interface UseRSVPReaderReturn {
   settings: RSVPSettings;
   estimatedTimeLeft: string;
   totalTime: string;
+  pacingData: WordPacing[] | null;
   setText: (text: string) => void;
   play: () => void;
   pause: () => void;
@@ -26,6 +34,7 @@ interface UseRSVPReaderReturn {
   setWPM: (wpm: number) => void;
   setWordsAtATime: (count: number) => void;
   setFontSize: (size: number) => void;
+  setPacingData: (data: WordPacing[] | null) => void;
 }
 
 const DEFAULT_SETTINGS: RSVPSettings = {
@@ -35,9 +44,32 @@ const DEFAULT_SETTINGS: RSVPSettings = {
 };
 
 // Calculate delay based on word characteristics for adaptive pacing
-const calculateWordDelay = (word: string, baseDelay: number): number => {
+const calculateWordDelay = (
+  word: string, 
+  baseDelay: number,
+  pacingInfo?: WordPacing
+): number => {
   let multiplier = 1;
   
+  // If we have AI pacing data, use it
+  if (pacingInfo) {
+    // importance is 0-1, convert to delay multiplier (1.0-2.0)
+    multiplier += pacingInfo.importance;
+    
+    // Add pause at semantic boundaries
+    if (pacingInfo.semanticBoundary) {
+      multiplier += 0.3;
+    }
+    
+    // Key terms get extra time
+    if (pacingInfo.isKeyTerm) {
+      multiplier += 0.2;
+    }
+    
+    return baseDelay * multiplier;
+  }
+  
+  // Fallback to heuristic-based pacing
   // Longer words need more time
   if (word.length > 8) multiplier += 0.3;
   if (word.length > 12) multiplier += 0.2;
@@ -67,11 +99,13 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [settings, setSettings] = useState<RSVPSettings>(DEFAULT_SETTINGS);
+  const [pacingData, setPacingData] = useState<WordPacing[] | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wordsRef = useRef<string[]>(words);
   const indexRef = useRef(currentIndex);
   const settingsRef = useRef(settings);
+  const pacingDataRef = useRef(pacingData);
 
   // Keep refs in sync
   useEffect(() => {
@@ -86,9 +120,9 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     settingsRef.current = settings;
   }, [settings]);
 
-  const getBaseDelay = useCallback(() => {
-    return (60 / settings.wpm) * 1000 * settings.wordsAtATime;
-  }, [settings.wpm, settings.wordsAtATime]);
+  useEffect(() => {
+    pacingDataRef.current = pacingData;
+  }, [pacingData]);
 
   const scheduleNextWord = useCallback(() => {
     if (timerRef.current) {
@@ -98,6 +132,7 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     const currentWords = wordsRef.current;
     const index = indexRef.current;
     const currentSettings = settingsRef.current;
+    const currentPacing = pacingDataRef.current;
 
     if (index >= currentWords.length) {
       setIsPlaying(false);
@@ -108,8 +143,11 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     const displayWords = currentWords.slice(index, index + currentSettings.wordsAtATime);
     const combinedWord = displayWords.join(' ');
     
+    // Get pacing info for the first word in the group
+    const pacingInfo = currentPacing?.[index];
+    
     const baseDelay = (60 / currentSettings.wpm) * 1000 * currentSettings.wordsAtATime;
-    const delay = calculateWordDelay(combinedWord, baseDelay);
+    const delay = calculateWordDelay(combinedWord, baseDelay, pacingInfo);
 
     timerRef.current = setTimeout(() => {
       setCurrentIndex((prev) => {
@@ -202,6 +240,7 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     setCurrentIndex(0);
     indexRef.current = 0;
     setIsPlaying(false);
+    setPacingData(null); // Clear pacing data when text changes
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -249,6 +288,7 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     isPlaying,
     progress,
     settings,
+    pacingData,
     estimatedTimeLeft: formatTime(secondsRemaining),
     totalTime: formatTime(totalSeconds),
     setText,
@@ -262,6 +302,6 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     setWPM,
     setWordsAtATime,
     setFontSize,
+    setPacingData,
   };
 };
-

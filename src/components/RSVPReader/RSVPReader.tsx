@@ -1,8 +1,12 @@
-import { useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
 import { useRSVPReader } from '@/hooks/useRSVPReader';
+import { useAIFeatures, type IndustryMode } from '@/hooks/useAIFeatures';
+import { useEyeTracking, calculateRewindPosition } from '@/hooks/useEyeTracking';
 import { WordDisplay } from './WordDisplay';
 import { ControlBar } from './ControlBar';
 import { PlaybackControls } from './PlaybackControls';
+import { AISettingsPanel } from './AISettingsPanel';
+import { useToast } from '@/hooks/use-toast';
 
 interface RSVPReaderProps {
   text?: string;
@@ -18,6 +22,15 @@ export interface RSVPReaderRef {
 
 export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
   ({ text, onClose }, ref) => {
+    const { toast } = useToast();
+    
+    // AI Feature States
+    const [smartPacingEnabled, setSmartPacingEnabled] = useState(false);
+    const [eyeTrackingEnabled, setEyeTrackingEnabled] = useState(false);
+    const [industryMode, setIndustryMode] = useState<IndustryMode>('general');
+    const [originalText, setOriginalText] = useState('');
+    const [rampUpMultiplier, setRampUpMultiplier] = useState(1);
+
     const {
       words,
       currentIndex,
@@ -26,6 +39,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       progress,
       settings,
       estimatedTimeLeft,
+      pacingData,
       setText,
       togglePlay,
       stop,
@@ -37,11 +51,69 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       setWPM,
       setWordsAtATime,
       setFontSize,
+      setPacingData,
     } = useRSVPReader();
+
+    const {
+      isLoading: isAILoading,
+      error: aiError,
+      summary,
+      summarizeText,
+      analyzePacing,
+      clearResults,
+    } = useAIFeatures();
+
+    // Eye tracking with rewind functionality
+    const {
+      isTracking,
+      isLookingAway,
+      startTracking,
+      stopTracking,
+    } = useEyeTracking({
+      onLookAway: () => {
+        if (isPlaying && eyeTrackingEnabled) {
+          pause();
+          toast({
+            title: "Focus lost",
+            description: "Reading paused. Look back to continue.",
+          });
+        }
+      },
+      onLookBack: () => {
+        if (eyeTrackingEnabled && !isPlaying) {
+          // Rewind a bit and start with slower speed
+          const { newIndex, rampUpSpeed } = calculateRewindPosition(currentIndex, 5, words.length);
+          goToPosition(newIndex);
+          setRampUpMultiplier(rampUpSpeed);
+          
+          // Gradually ramp up speed
+          const rampInterval = setInterval(() => {
+            setRampUpMultiplier(prev => {
+              if (prev >= 1) {
+                clearInterval(rampInterval);
+                return 1;
+              }
+              return prev + 0.1;
+            });
+          }, 500);
+          
+          play();
+          toast({
+            title: "Welcome back!",
+            description: "Rewinding a few words and ramping up speed.",
+          });
+        }
+      },
+      inactivityThreshold: 3000,
+      rewindAmount: 5,
+    });
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
-      setText,
+      setText: (newText: string) => {
+        setOriginalText(newText);
+        setText(newText);
+      },
       play,
       pause,
       stop,
@@ -50,9 +122,61 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     // Set initial text
     useEffect(() => {
       if (text) {
+        setOriginalText(text);
         setText(text);
       }
     }, [text, setText]);
+
+    // Handle eye tracking toggle
+    useEffect(() => {
+      if (eyeTrackingEnabled && isPlaying) {
+        startTracking();
+      } else {
+        stopTracking();
+      }
+    }, [eyeTrackingEnabled, isPlaying, startTracking, stopTracking]);
+
+    // Handle smart pacing toggle
+    useEffect(() => {
+      if (smartPacingEnabled && originalText && !pacingData) {
+        analyzePacing(originalText, industryMode).then((data) => {
+          if (data) {
+            setPacingData(data);
+            toast({
+              title: "Smart pacing enabled",
+              description: "Reading speed will adapt to content complexity.",
+            });
+          }
+        });
+      } else if (!smartPacingEnabled) {
+        setPacingData(null);
+      }
+    }, [smartPacingEnabled, originalText, industryMode, analyzePacing, setPacingData, toast, pacingData]);
+
+    // Show AI errors
+    useEffect(() => {
+      if (aiError) {
+        toast({
+          variant: "destructive",
+          title: "AI Error",
+          description: aiError,
+        });
+      }
+    }, [aiError, toast]);
+
+    // Handle summarization
+    const handleSummarize = useCallback(async (length: 'brief' | 'detailed') => {
+      if (!originalText) return;
+      
+      const result = await summarizeText(originalText, industryMode, length);
+      if (result) {
+        setText(result);
+        toast({
+          title: "Summary ready",
+          description: `${length === 'brief' ? 'Brief' : 'Detailed'} summary loaded for reading.`,
+        });
+      }
+    }, [originalText, industryMode, summarizeText, setText, toast]);
 
     // Keyboard shortcuts
     const handleKeyDown = useCallback(
@@ -84,11 +208,18 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
           case 'KeyR':
             if (e.metaKey || e.ctrlKey) return;
             e.preventDefault();
-            stop();
+            // Restore original text
+            if (summary && originalText) {
+              setText(originalText);
+              clearResults();
+              toast({ title: "Original text restored" });
+            } else {
+              stop();
+            }
             break;
         }
       },
-      [togglePlay, skipBackward, skipForward, setWPM, settings.wpm, stop, onClose]
+      [togglePlay, skipBackward, skipForward, setWPM, settings.wpm, stop, onClose, summary, originalText, setText, clearResults, toast]
     );
 
     useEffect(() => {
@@ -109,18 +240,45 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       <div className="flex flex-col h-full bg-background reader-overlay rounded-xl overflow-hidden border border-border shadow-2xl">
         {/* Control bar */}
         <ControlBar
-          wpm={settings.wpm}
+          wpm={Math.round(settings.wpm * rampUpMultiplier)}
           wordsAtATime={settings.wordsAtATime}
           fontSize={settings.fontSize}
           timeLeft={estimatedTimeLeft}
           onWPMChange={setWPM}
           onWordsAtATimeChange={setWordsAtATime}
           onFontSizeChange={setFontSize}
+          aiSettingsSlot={
+            <AISettingsPanel
+              smartPacingEnabled={smartPacingEnabled}
+              onSmartPacingChange={setSmartPacingEnabled}
+              eyeTrackingEnabled={eyeTrackingEnabled}
+              onEyeTrackingChange={setEyeTrackingEnabled}
+              industryMode={industryMode}
+              onIndustryModeChange={setIndustryMode}
+              onSummarize={handleSummarize}
+              isSummarizing={isAILoading}
+              isLookingAway={isLookingAway}
+            />
+          }
         />
 
         {/* Main reading area */}
         <div className="flex-1 min-h-[300px] relative">
-          <WordDisplay word={currentWord} fontSize={settings.fontSize} />
+          <WordDisplay 
+            word={currentWord} 
+            fontSize={settings.fontSize}
+            isKeyTerm={pacingData?.[currentIndex]?.isKeyTerm}
+          />
+          
+          {/* Eye tracking indicator */}
+          {eyeTrackingEnabled && isLookingAway && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="text-center space-y-2">
+                <div className="text-4xl">👁️</div>
+                <p className="text-muted-foreground">Waiting for you to return...</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Playback controls */}

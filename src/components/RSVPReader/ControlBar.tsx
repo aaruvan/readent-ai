@@ -15,6 +15,7 @@ interface ControlBarProps {
   onWPMChange: (wpm: number) => void;
   onWordsAtATimeChange: (count: number) => void;
   onFontSizeChange: (size: number) => void;
+  aiSettingsSlot?: React.ReactNode;
 }
 
 interface ControlItemProps {
@@ -57,6 +58,7 @@ export const ControlBar = ({
   onWPMChange,
   onWordsAtATimeChange,
   onFontSizeChange,
+  aiSettingsSlot,
 }: ControlBarProps) => {
   return (
     <div className="flex items-center justify-between px-6 py-3 bg-card/50 border-b border-border backdrop-blur-sm">
@@ -91,6 +93,9 @@ export const ControlBar = ({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* AI Settings slot */}
+        {aiSettingsSlot}
+
         {/* Settings popover */}
         <Popover>
           <PopoverTrigger asChild>
