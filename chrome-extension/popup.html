@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSVP Speed Reader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="popup-header">
+      <h1>RSVP Reader</h1>
+      <span class="version">v1.0</span>
+    </div>
+
+    <div class="popup-content">
+      <div class="selection-preview" id="selection-preview">
+        <p class="placeholder">Select text on any webpage, then click "Start Reading"</p>
+      </div>
+
+      <div class="word-count" id="word-count"></div>
+
+      <button class="start-btn" id="start-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Start Reading
+      </button>
+
+      <div class="settings-section">
+        <h3>Quick Settings</h3>
+        <div class="setting-row">
+          <label>Default WPM</label>
+          <div class="setting-control">
+            <input type="range" id="default-wpm" min="100" max="1000" value="300" step="25">
+            <span id="wpm-display">300</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-section">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="shortcut-row">
+          <span class="key">Alt + R</span>
+          <span>Open reader</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="key">Space</span>
+          <span>Play/Pause</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="key">← →</span>
+          <span>Skip words</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="key">↑ ↓</span>
+          <span>Adjust speed</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="key">Esc</span>
+          <span>Close reader</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="popup-footer">
+      <p>Right-click selected text for quick access</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
