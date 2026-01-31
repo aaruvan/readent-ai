@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { RSVPReader, RSVPReaderRef } from '@/components/RSVPReader';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Zap, BookOpen, Brain, Sparkles, Clock, Eye, Keyboard, ChevronRight } from 'lucide-react';
+import { Zap, BookOpen, Brain, Sparkles, Clock, Eye, Keyboard } from 'lucide-react';
 
 const SAMPLE_TEXT = `Speed reading is a collection of reading methods which attempt to increase rates of reading without greatly reducing comprehension or retention. Methods include chunking and minimizing subvocalization. The many available speed reading training programs include books, videos, software, and seminars.
 
@@ -160,17 +160,17 @@ const Index = () => {
         </div>
       </section>
 
-      {/* AI Features Preview */}
+      {/* AI Features Section */}
       <section className="py-16 px-4 bg-card/50">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <Brain className="w-4 h-4" />
-              Coming Soon
+              AI-Powered
             </div>
-            <h2 className="text-3xl font-bold mb-4">AI-Powered Features</h2>
+            <h2 className="text-3xl font-bold mb-4">AI-Enhanced Reading</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              We're building AI enhancements to make speed reading even more effective
+              Click the brain icon in the reader to access AI features powered by Keywords AI
             </p>
           </div>
 
@@ -206,12 +206,12 @@ const Index = () => {
             <div className="p-6 rounded-xl bg-background border border-border">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-5 h-5 text-primary" />
+                  <Eye className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Comprehension Mode</h3>
+                  <h3 className="font-semibold mb-2">Focus Detection</h3>
                   <p className="text-sm text-muted-foreground">
-                    AI generates quick questions after reading to test and reinforce understanding
+                    Automatically pauses when you look away, rewinds, and ramps back up when you return
                   </p>
                 </div>
               </div>
@@ -220,12 +220,12 @@ const Index = () => {
             <div className="p-6 rounded-xl bg-background border border-border">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <ChevronRight className="w-5 h-5 text-primary" />
+                  <BookOpen className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Phrase Grouping</h3>
+                  <h3 className="font-semibold mb-2">Industry Modes</h3>
                   <p className="text-sm text-muted-foreground">
-                    Intelligently groups words into meaningful phrases at semantic boundaries
+                    Specialized for legal, medical, and technical documents with domain-aware pacing
                   </p>
                 </div>
               </div>

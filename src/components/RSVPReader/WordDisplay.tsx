@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 interface WordDisplayProps {
   word: string;
   fontSize: number;
+  isKeyTerm?: boolean;
 }
 
 // Find the optimal recognition point (ORP) - typically around 30% into the word
@@ -13,7 +14,7 @@ const getORPIndex = (word: string): number => {
   return Math.floor(cleanWord.length * 0.3);
 };
 
-export const WordDisplay = ({ word, fontSize }: WordDisplayProps) => {
+export const WordDisplay = ({ word, fontSize, isKeyTerm }: WordDisplayProps) => {
   const { before, focal, after } = useMemo(() => {
     if (!word) return { before: '', focal: '', after: '' };
     
@@ -63,9 +64,18 @@ export const WordDisplay = ({ word, fontSize }: WordDisplayProps) => {
         {/* ORP guide line */}
         <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/20 -translate-x-1/2" />
         
+        {/* Key term indicator */}
+        {isKeyTerm && (
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-full">
+            Key Term
+          </div>
+        )}
+        
         {/* Word container */}
         <div 
-          className="font-mono tracking-wide animate-word-enter flex items-center whitespace-nowrap"
+          className={`font-mono tracking-wide animate-word-enter flex items-center whitespace-nowrap ${
+            isKeyTerm ? 'ring-2 ring-primary/30 ring-offset-4 ring-offset-background rounded-lg px-4' : ''
+          }`}
           style={{ fontSize }}
         >
           <span className="text-foreground">{before}</span>
