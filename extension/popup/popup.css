@@ -104,7 +104,13 @@ body {
 }
 
 .btn-icon {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.btn-icon-svg {
+  width: 16px;
+  height: 16px;
 }
 
 .settings-section h3,
