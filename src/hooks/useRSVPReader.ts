@@ -23,6 +23,7 @@ interface UseRSVPReaderReturn {
   estimatedTimeLeft: string;
   totalTime: string;
   pacingData: WordPacing[] | null;
+  speedMultiplier: number;
   setText: (text: string) => void;
   play: () => void;
   pause: () => void;
@@ -35,6 +36,7 @@ interface UseRSVPReaderReturn {
   setWordsAtATime: (count: number) => void;
   setFontSize: (size: number) => void;
   setPacingData: (data: WordPacing[] | null) => void;
+  setSpeedMultiplier: (multiplier: number) => void;
 }
 
 const DEFAULT_SETTINGS: RSVPSettings = {
@@ -100,12 +102,14 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [settings, setSettings] = useState<RSVPSettings>(DEFAULT_SETTINGS);
   const [pacingData, setPacingData] = useState<WordPacing[] | null>(null);
+  const [speedMultiplier, setSpeedMultiplierState] = useState(1);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wordsRef = useRef<string[]>(words);
   const indexRef = useRef(currentIndex);
   const settingsRef = useRef(settings);
   const pacingDataRef = useRef(pacingData);
+  const speedMultiplierRef = useRef(speedMultiplier);
 
   // Keep refs in sync
   useEffect(() => {
@@ -124,6 +128,10 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     pacingDataRef.current = pacingData;
   }, [pacingData]);
 
+  useEffect(() => {
+    speedMultiplierRef.current = speedMultiplier;
+  }, [speedMultiplier]);
+
   const scheduleNextWord = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -133,6 +141,7 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     const index = indexRef.current;
     const currentSettings = settingsRef.current;
     const currentPacing = pacingDataRef.current;
+    const currentMultiplier = speedMultiplierRef.current;
 
     if (index >= currentWords.length) {
       setIsPlaying(false);
@@ -147,7 +156,9 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     const pacingInfo = currentPacing?.[index];
     
     const baseDelay = (60 / currentSettings.wpm) * 1000 * currentSettings.wordsAtATime;
-    const delay = calculateWordDelay(combinedWord, baseDelay, pacingInfo);
+    const rawDelay = calculateWordDelay(combinedWord, baseDelay, pacingInfo);
+    const safeMultiplier = Math.max(0.1, currentMultiplier);
+    const delay = rawDelay / safeMultiplier;
 
     timerRef.current = setTimeout(() => {
       setCurrentIndex((prev) => {
@@ -259,6 +270,10 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     setSettings((prev) => ({ ...prev, fontSize: Math.max(16, Math.min(120, size)) }));
   }, []);
 
+  const setSpeedMultiplier = useCallback((multiplier: number) => {
+    setSpeedMultiplierState(Math.max(0.1, Math.min(1.5, multiplier)));
+  }, []);
+
   // Calculate current word(s) to display
   const currentWord = words.length > 0
     ? words.slice(currentIndex, currentIndex + settings.wordsAtATime).join(' ')
@@ -289,6 +304,7 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     progress,
     settings,
     pacingData,
+    speedMultiplier,
     estimatedTimeLeft: formatTime(secondsRemaining),
     totalTime: formatTime(totalSeconds),
     setText,
@@ -303,5 +319,6 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     setWordsAtATime,
     setFontSize,
     setPacingData,
+    setSpeedMultiplier,
   };
 };
