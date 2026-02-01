@@ -107,7 +107,10 @@ export const ControlBar = ({
 
       <div className="flex items-center gap-2">
         {/* AI Settings slot */}
-        {aiSettingsSlot}
+        <div className="flex items-center gap-2">
+          {aiSettingsSlot}
+          <span className="text-[11px] text-muted-foreground">Eye tracking here</span>
+        </div>
 
         {/* Settings popover */}
         <Popover>

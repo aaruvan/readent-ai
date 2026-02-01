@@ -20,6 +20,9 @@ const Index = () => {
   const [activeText, setActiveText] = useState(SAMPLE_TEXT);
   const [showReader, setShowReader] = useState(false);
   const readerRef = useRef<RSVPReaderRef>(null);
+  const readerSectionRef = useRef<HTMLElement | null>(null);
+  const inputSectionRef = useRef<HTMLElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleStartReading = () => {
     setShowReader(true);
@@ -30,11 +33,26 @@ const Index = () => {
     setCustomText(SAMPLE_TEXT);
   };
 
+  const handleTryDemo = () => {
+    setActiveText(SAMPLE_TEXT);
+    setShowReader(true);
+    window.setTimeout(() => {
+      readerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  };
+
+  const handleAddYourText = () => {
+    window.setTimeout(() => {
+      inputSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      textareaRef.current?.focus();
+    }, 0);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="flex justify-start mb-6">
             <Link
@@ -46,59 +64,63 @@ const Index = () => {
           </div>
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-              <Sparkles className="w-4 h-4" />
-              AI-Enhanced Speed Reading
+              <Eye className="w-4 h-4" />
+              Attention-aware reading
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-              Read faster with{' '}
-              <span className="text-primary">RSVP</span>
+              Read with{' '}
+              <span className="text-primary">focus detection</span>
             </h1>
             
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Rapid Serial Visual Presentation displays words one at a time at your focal point, 
-              eliminating eye movement and dramatically increasing your reading speed.
+              The reader pauses when you look away, rewinds to a safe point, and ramps back up when you return.
+              No guessing where you left off.
             </p>
 
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
+            <div className="flex flex-wrap justify-center gap-4 mb-10">
               <Button 
                 size="lg" 
                 className="gap-2"
-                onClick={() => setShowReader(true)}
+                onClick={handleTryDemo}
               >
                 <Zap className="w-5 h-5" />
-                Try Demo
+                Try Eye Tracking
               </Button>
               <Button 
                 size="lg" 
                 variant="outline"
                 className="gap-2"
-                onClick={() => document.getElementById('input-section')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={handleAddYourText}
               >
                 <BookOpen className="w-5 h-5" />
                 Add Your Text
               </Button>
             </div>
 
+            <div className="mt-8 text-sm text-muted-foreground">
+              Want AI summarizing? Try the browser extension in `extension/`.
+            </div>
+
             {/* Feature highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
               <div className="p-6 rounded-xl bg-card border border-border">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
-                  <Clock className="w-6 h-6 text-primary" />
+                  <Eye className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-semibold mb-2">Adaptive Pacing</h3>
+                <h3 className="font-semibold mb-2">Focus Detection</h3>
                 <p className="text-sm text-muted-foreground">
-                  Automatically adjusts speed based on word length, punctuation, and complexity
+                  Pauses when you look away, rewinds to a safe point, then resumes smoothly
                 </p>
               </div>
 
               <div className="p-6 rounded-xl bg-card border border-border">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
-                  <Eye className="w-6 h-6 text-primary" />
+                  <Clock className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-semibold mb-2">Focal Point Highlight</h3>
+                <h3 className="font-semibold mb-2">Adaptive Ramp</h3>
                 <p className="text-sm text-muted-foreground">
-                  Orange-highlighted optimal recognition point helps your brain process faster
+                  Ramps speed back up after rewinds so you do not lose comprehension
                 </p>
               </div>
 
@@ -106,9 +128,9 @@ const Index = () => {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto">
                   <Keyboard className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-semibold mb-2">Keyboard Controls</h3>
+                <h3 className="font-semibold mb-2">Hands-free Flow</h3>
                 <p className="text-sm text-muted-foreground">
-                  Space to play/pause, arrows to navigate, and more shortcuts for power users
+                  Eye tracking keeps you in flow without manual pausing or seeking
                 </p>
               </div>
             </div>
@@ -118,7 +140,7 @@ const Index = () => {
 
       {/* Reader Section */}
       {showReader && (
-        <section className="py-8 px-4">
+        <section ref={readerSectionRef} className="py-8 px-4">
           <div className="container mx-auto max-w-5xl">
             <div className="h-[500px]">
               <RSVPReader 
@@ -139,7 +161,7 @@ const Index = () => {
       )}
 
       {/* Input Section */}
-      <section id="input-section" className="py-16 px-4">
+      <section id="input-section" ref={inputSectionRef} className="py-16 px-4">
         <div className="container mx-auto max-w-3xl">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-2">Paste Your Text</h2>
@@ -150,6 +172,7 @@ const Index = () => {
 
           <div className="space-y-4">
             <Textarea
+              ref={textareaRef}
               placeholder="Paste your article, essay, or any text here..."
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
@@ -247,10 +270,7 @@ const Index = () => {
       <footer className="py-8 px-4 border-t border-border">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>
-            RSVP Speed Reader Demo • Built for hackathon demonstration
-          </p>
-          <p className="mt-2">
-            Inspired by SwiftRead and similar speed reading tools
+            RSVP Speed Reader Demo • Built with Lovable and Trae for Keywords AI hackathon
           </p>
         </div>
       </footer>

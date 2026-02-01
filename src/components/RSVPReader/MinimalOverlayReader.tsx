@@ -202,8 +202,8 @@ export const MinimalOverlayReader = ({
             </Button>
           </div>
 
-          <div className="px-8 pb-10 pt-6 text-center">
-            <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 px-6 py-10">
+          <div className="px-8 pb-14 pt-6 text-center">
+            <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 px-6 py-12">
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
               {(isLookingAway || rewindOverlay) && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 text-white">
@@ -225,7 +225,7 @@ export const MinimalOverlayReader = ({
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-center gap-4 text-xs text-white/50">
+            <div className="mt-8 flex items-center justify-center gap-4 text-xs text-white/50">
               <button
                 onClick={isPlaying ? pause : play}
                 className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-white/70 transition hover:border-white/30 hover:text-white"
