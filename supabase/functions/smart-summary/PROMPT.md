@@ -94,7 +94,7 @@ REQUIRED JSON SCHEMA
 
 HIGHLIGHTS (STRICT)
 - Extract contextually important phrases: key claims, conclusions, risks, definitions, decisions.
-- Each "phrase" MUST be an exact contiguous substring from the source, 2–10 words.
+- Each "phrase" MUST be an exact contiguous substring from the SUMMARY you generate (not the source), 2–10 words.
 - No duplicates; avoid heavy overlap.
 - Scores: 1.0 = most important.
 - Count based on W:

@@ -442,15 +442,28 @@
 }
 
 .sir-highlight-low {
-  background: linear-gradient(90deg, rgba(88, 166, 255, 0.15), rgba(88, 166, 255, 0.05));
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.08), rgba(88, 166, 255, 0.03));
 }
 
 .sir-highlight-med {
-  background: linear-gradient(90deg, rgba(88, 166, 255, 0.35), rgba(88, 166, 255, 0.12));
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.18), rgba(88, 166, 255, 0.07));
 }
 
 .sir-highlight-high {
-  background: linear-gradient(90deg, rgba(88, 166, 255, 0.6), rgba(88, 166, 255, 0.2));
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.32), rgba(88, 166, 255, 0.12));
+}
+
+.sir-highlighted-word {
+  position: relative;
+}
+
+.sir-highlighted-word::before {
+  content: '';
+  position: absolute;
+  inset: -6px -10px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(88, 166, 255, var(--sir-highlight-alpha, 0.15)) 0%, rgba(88, 166, 255, 0) 70%);
+  z-index: -1;
 }
 
 .sir-word-inner {

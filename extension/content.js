@@ -127,6 +127,22 @@
     return html;
   }
 
+  function getHighlightScoreForText(text, highlights) {
+    if (!text || !Array.isArray(highlights) || highlights.length === 0) return 0;
+    const lowerText = String(text).toLowerCase();
+    let maxScore = 0;
+    for (const h of highlights) {
+      const phrase = String(h?.phrase || h?.text || h?.label || '').trim();
+      if (!phrase) continue;
+      if (lowerText.includes(phrase.toLowerCase())) {
+        const scoreRaw = Number(h?.score ?? h?.importance ?? h?.weight);
+        const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(1, scoreRaw)) : 0.6;
+        if (score > maxScore) maxScore = score;
+      }
+    }
+    return maxScore;
+  }
+
 
   function showToast(message) {
     let el = document.getElementById(TOAST_ID);
@@ -559,6 +575,8 @@
         spanFocal.textContent = '';
         spanAfter.textContent = '';
         wordBox.style.fontSize = state.settings.fontSize + 'px';
+        wordBox.classList.remove('sir-highlighted-word');
+        wordBox.style.removeProperty('--sir-highlight-alpha');
         const ready = wordInner.querySelector('.sir-ready-msg') || document.createElement('span');
         ready.className = 'sir-ready-msg';
         if (isFinished && state.readElapsedSeconds != null) {
@@ -579,6 +597,19 @@
       wordBox.style.fontSize = state.settings.fontSize + 'px';
       keyTermBadge.style.display = 'none';
       wordBox.classList.remove('sir-key-term');
+      if (useHighlights) {
+        const highlightScore = getHighlightScoreForText(chunk, state.summaryHighlights);
+        if (highlightScore > 0) {
+          wordBox.classList.add('sir-highlighted-word');
+          wordBox.style.setProperty('--sir-highlight-alpha', String(0.08 + highlightScore * 0.18));
+        } else {
+          wordBox.classList.remove('sir-highlighted-word');
+          wordBox.style.removeProperty('--sir-highlight-alpha');
+        }
+      } else {
+        wordBox.classList.remove('sir-highlighted-word');
+        wordBox.style.removeProperty('--sir-highlight-alpha');
+      }
     }
 
     function getRecoveryMultiplier() {
