@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RSVPReader, RSVPReaderRef } from '@/components/RSVPReader';
-import { useRef } from 'react';
+import { MinimalOverlayReader } from '@/components/RSVPReader/MinimalOverlayReader';
 
 const ABOUT_TEXT = `About
 
@@ -41,7 +40,6 @@ And in a world where decisions are driven by dense text, that’s not a feature 
 
 const About = () => {
   const [showReader, setShowReader] = useState(false);
-  const readerRef = useRef<RSVPReaderRef>(null);
   const [activeText, setActiveText] = useState(ABOUT_TEXT);
 
   const handleStartReading = () => {
@@ -81,20 +79,11 @@ const About = () => {
         </section>
 
         {showReader && (
-          <section className="pt-4">
-            <div className="h-[500px]">
-              <RSVPReader
-                ref={readerRef}
-                text={activeText}
-                onClose={() => setShowReader(false)}
-                startWithEyeTracking
-              />
-            </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-3">
-              <Zap className="w-3 h-3" />
-              Eye tracking enabled for this session
-            </div>
-          </section>
+          <MinimalOverlayReader
+            text={activeText}
+            onClose={() => setShowReader(false)}
+            wordsAtATime={3}
+          />
         )}
       </main>
     </div>

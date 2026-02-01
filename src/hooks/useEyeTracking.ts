@@ -211,7 +211,9 @@ export const useEyeTracking = ({
         pushLog(debugLine);
       }
 
-      if (detections === 0) {
+      const hasValidFace = detections > 0 && maxAreaRatio >= minFaceAreaRatio;
+
+      if (!hasValidFace) {
         if (!noDetectStartRef.current) {
           noDetectStartRef.current = now;
         }
@@ -219,7 +221,7 @@ export const useEyeTracking = ({
         noDetectStartRef.current = 0;
       }
 
-      if (detections > 0) {
+      if (hasValidFace) {
         if (!hasSeenFaceRef.current) {
           seenStreakRef.current = now;
         }
@@ -230,7 +232,9 @@ export const useEyeTracking = ({
         }
       } else {
         seenStreakRef.current = 0;
-        markLookingAway();
+        if (hasSeenFaceRef.current && now - lastSeenRef.current >= lossMs) {
+          markLookingAway();
+        }
       }
 
       inFlightRef.current = false;

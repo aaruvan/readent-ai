@@ -122,8 +122,8 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
           });
         }
       },
-      lossMs: 0,
-      recoverMs: 0,
+      lossMs: 800,
+      recoverMs: 250,
       minFaceAreaRatio: 0.02,
     });
 
@@ -336,7 +336,9 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       <div className="flex flex-col h-full bg-background reader-overlay rounded-xl overflow-hidden border border-border shadow-2xl">
         {/* Control bar */}
         <ControlBar
-          wpm={Math.round(settings.wpm * rampUpMultiplier)}
+          wpm={settings.wpm}
+          displayWpm={Math.round(settings.wpm * rampUpMultiplier)}
+          rampUpMultiplier={rampUpMultiplier}
           wordsAtATime={settings.wordsAtATime}
           fontSize={settings.fontSize}
           timeLeft={estimatedTimeLeft}

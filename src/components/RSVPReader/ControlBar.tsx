@@ -9,6 +9,8 @@ import { Slider } from '@/components/ui/slider';
 
 interface ControlBarProps {
   wpm: number;
+  displayWpm: number;
+  rampUpMultiplier: number;
   wordsAtATime: number;
   fontSize: number;
   timeLeft: string;
@@ -20,7 +22,7 @@ interface ControlBarProps {
 
 interface ControlItemProps {
   label: string;
-  value: number | string;
+  value: React.ReactNode;
   onIncrement: () => void;
   onDecrement: () => void;
   icon?: React.ReactNode;
@@ -52,6 +54,8 @@ const ControlItem = ({ label, value, onIncrement, onDecrement, icon }: ControlIt
 
 export const ControlBar = ({
   wpm,
+  displayWpm,
+  rampUpMultiplier,
   wordsAtATime,
   fontSize,
   timeLeft,
@@ -69,7 +73,16 @@ export const ControlBar = ({
         {/* WPM Control */}
         <ControlItem
           label="WPM"
-          value={wpm}
+          value={
+            <span className="inline-flex items-center gap-1">
+              {displayWpm}
+              {rampUpMultiplier < 1 && (
+                <span className="text-[10px] text-muted-foreground">
+                  {Math.round(rampUpMultiplier * 100)}%
+                </span>
+              )}
+            </span>
+          }
           icon={<Zap className="w-3 h-3 text-primary" />}
           onIncrement={() => onWPMChange(wpm + 25)}
           onDecrement={() => onWPMChange(wpm - 25)}
