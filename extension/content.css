@@ -37,54 +37,6 @@
   gap: 16px;
 }
 
-.sir-attention-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.sir-attention-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #44d07b;
-  box-shadow: 0 0 10px rgba(68, 208, 123, 0.6);
-}
-
-.sir-attention-indicator.sir-attention-lost {
-  color: rgba(255, 255, 255, 0.85);
-  border-color: rgba(232, 93, 4, 0.45);
-  background: rgba(232, 93, 4, 0.15);
-}
-
-.sir-attention-indicator.sir-attention-lost .sir-attention-dot {
-  background: #e85d04;
-  box-shadow: 0 0 10px rgba(232, 93, 4, 0.6);
-}
-
-.sir-attention-indicator.sir-attention-off {
-  color: rgba(255, 255, 255, 0.45);
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.sir-attention-indicator.sir-attention-off .sir-attention-dot {
-  background: rgba(255, 255, 255, 0.3);
-  box-shadow: none;
-}
-
-.sir-attention-debug {
-  font-size: 10px;
-  opacity: 0.6;
-}
-
 .sir-control-item {
   display: flex;
   align-items: center;
@@ -132,6 +84,47 @@
   color: rgba(255, 255, 255, 0.8);
   border-radius: 6px;
   cursor: pointer;
+}
+
+.sir-summary-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sir-summary-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sir-summary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sir-summary-btn.sir-summary-active {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: rgba(88, 166, 255, 0.5);
+  color: #58a6ff;
+}
+
+.sir-summary-btn.sir-summary-loading .sir-summary-icon::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 4px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sir-spin 0.6s linear infinite;
 }
 
 .sir-close-btn:hover {
