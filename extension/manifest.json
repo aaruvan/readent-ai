@@ -20,12 +20,7 @@
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["vendor/face-detector-tracker.js"],
-      "matches": ["<all_urls>"]
-    }
-  ],
+  "web_accessible_resources": [],
   "commands": {
     "toggle-reader": {
       "suggested_key": {

@@ -1,6 +1,6 @@
 # Swift Insight Reader – Chrome Extension
 
-Chrome extension (Manifest V3) that turns selected text on any webpage into an RSVP speed reader overlay: words appear one at a time with ORP highlight, adaptive pacing, and keyboard shortcuts.
+Chrome extension (Manifest V3) that turns selected text on any webpage into an RSVP speed reader overlay: words appear one at a time with ORP highlight, adaptive pacing, and keyboard shortcuts. Eye tracking is available in the web app only (not in the extension).
 
 ## Features
 
@@ -9,8 +9,9 @@ Chrome extension (Manifest V3) that turns selected text on any webpage into an R
 - **Selection preview**: Popup shows selected text preview and word count when opened.
 - **ORP highlight**: Optimal Recognition Point (orange focal character) for faster recognition.
 - **Adaptive pacing**: Slower on long words, punctuation, numbers, capitals; faster on short words.
-- **AI Smart Pacer**: Click the **Smart** button to analyze text with AI for per-word pacing (requires deployed `smart-pacer` edge function).
-- **Controls**: WPM slider (50–1200), words-at-a-time (1–5), font size, play/pause, skip, restart.
+- **AI Smart Pacer**: Click the 🧠 button to analyze text with AI for per-word pacing (requires deployed `smart-pacer` edge function).
+- **AI Summary**: Click **Summary** (✨) or **Summarize & Read** in the popup to summarize before reading (requires deployed `smart-summary` edge function).
+- **Controls**: WPM slider (50–1200), words-at-a-time (1–5), font size, play/pause, skip, restart. Context and translucent overlay toggles. Words control locks when Smart Pacer is on.
 - **Persistent WPM**: Default WPM saved and synced across devices.
 - **Keyboard**: Alt+R (open reader), Alt+Space (play/pause when reader open), Space, ←/→, ↑/↓, R, Escape.
 
@@ -29,8 +30,9 @@ Chrome extension (Manifest V3) that turns selected text on any webpage into an R
    - Right-click → **Speed Read Selection**, or
    - Click the extension icon and click **Start Reading**.
 3. The overlay opens. Press **Space** to start; use the controls or keyboard as needed.
-4. (Optional) Click **Smart** to enable AI pacing — the extension calls the `smart-pacer` Supabase edge function.
-5. Press **Escape** or click **Close** to dismiss.
+4. (Optional) Click **Summary** (✨) to summarize before reading — the extension calls the `smart-summary` Supabase edge function.
+5. (Optional) Click **Smart** (🧠) to enable AI pacing — the extension calls the `smart-pacer` Supabase edge function.
+6. Press **Escape** or click **Close** to dismiss.
 
 ## Keyboard Shortcuts
 
@@ -57,3 +59,7 @@ Chrome extension (Manifest V3) that turns selected text on any webpage into an R
 ## AI Smart Pacer
 
 Requires the `smart-pacer` Supabase edge function to be deployed. See `../supabase/functions/smart-pacer/` for setup. The extension uses `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `content.js` — update these if using a different project.
+
+## AI Summary
+
+Requires the `smart-summary` Supabase edge function to be deployed. See `../supabase/functions/smart-summary/` for setup. The extension uses `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `content.js` — update these if using a different project.
