@@ -34,13 +34,10 @@ serve(async (req) => {
 
   try {
     const KEYWORDS_AI_API_KEY = Deno.env.get("KEYWORDS_AI_API_KEY");
-    const PROMPT_ID = Deno.env.get("KEYWORDS_AI_SMART_PACER_PROMPT_ID");
+    const PROMPT_ID = "3d599ae814694279a38a70329c3a87a9";
 
     if (!KEYWORDS_AI_API_KEY) {
       throw new Error("KEYWORDS_AI_API_KEY is not configured");
-    }
-    if (!PROMPT_ID) {
-      throw new Error("KEYWORDS_AI_SMART_PACER_PROMPT_ID is not configured");
     }
 
     const body = (await req.json()) as SmartPacerRequest;
@@ -61,40 +58,39 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: "placeholder" }],
-        temperature: 0.2,
-        max_tokens: 8000,
-        extra_body: {
-          prompt: {
-            prompt_id: PROMPT_ID,
-            variables: {
-              selected_text: text,
-              user_wpm: String(user_wpm),
-              industry,
-              comprehension,
-              goal,
-            },
-            override: true,
+        prompt: {
+          prompt_id: PROMPT_ID,
+          variables: {
+            selected_text: text,
+            user_wpm: String(user_wpm),
+            industry,
+            comprehension,
+            goal,
           },
         },
+        customer_identifier: "swift_insight_reader",
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Keywords AI error:", response.status, errorText);
-
+      let errMsg = "AI service error";
+      try {
+        const errJson = JSON.parse(errorText);
+        errMsg = errJson.error?.message || errJson.message || errJson.error || errorText.slice(0, 200);
+      } catch {
+        if (errorText) errMsg = errorText.slice(0, 200);
+      }
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       return new Response(
-        JSON.stringify({ error: "AI service error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: errMsg }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

@@ -411,7 +411,6 @@
     function toggleSmartPacer() {
       if (state.smartPacerEnabled) {
         state.smartPacerEnabled = false;
-        state.pacingData = null;
         showToast('Smart pacing off');
         chrome.storage.sync.get(['rsvpSettings'], (result) => {
           const s = result.rsvpSettings || {};
@@ -420,7 +419,11 @@
         });
       } else {
         state.smartPacerEnabled = true;
-        fetchSmartPacing(false);
+        if (state.pacingData && state.pacingData.length === state.words.length) {
+          showToast('Smart pacing on');
+        } else {
+          fetchSmartPacing(false);
+        }
         chrome.storage.sync.get(['rsvpSettings'], (result) => {
           const s = result.rsvpSettings || {};
           s.smartPacerDefault = true;

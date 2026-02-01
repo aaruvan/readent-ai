@@ -77,4 +77,5 @@ After creating the prompt, copy its **Prompt ID** from the Keywords AI dashboard
 Add to Supabase project secrets (Dashboard → Settings → Edge Functions → Secrets):
 
 - `KEYWORDS_AI_API_KEY` — your Keywords AI API key
-- `KEYWORDS_AI_SMART_PACER_PROMPT_ID` — the prompt ID (e.g. `042f5f`)
+
+(Prompt ID is hardcoded in the edge function.)
