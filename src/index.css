@@ -137,4 +137,17 @@
     background: linear-gradient(180deg, hsl(var(--reader-bg)) 0%, hsl(var(--reader-bg) / 0.98) 100%);
     backdrop-filter: blur(20px);
   }
+
+  .rsvp-highlighted-word::before {
+    content: '';
+    position: absolute;
+    inset: -8px -16px;
+    border-radius: 999px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(88, 166, 255, var(--rsvp-highlight-alpha, 0.16)) 0%,
+      rgba(88, 166, 255, 0) 70%
+    );
+    z-index: -1;
+  }
 }

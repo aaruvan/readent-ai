@@ -61,7 +61,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     const {
       isLoading: isAILoading,
       error: aiError,
-      summary,
+      summaryHighlights,
       summarizeText,
       analyzePacing,
       clearResults,
@@ -214,26 +214,45 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       }
     }, [eyeError, toast]);
 
+    const [activeHighlights, setActiveHighlights] = useState<typeof summaryHighlights>([]);
+
+    const getHighlightScoreForText = useCallback((text: string) => {
+      if (!text || activeHighlights.length === 0) return 0;
+      const lower = text.toLowerCase();
+      let maxScore = 0;
+      for (const h of activeHighlights) {
+        const phrase = String(h?.phrase || '').trim();
+        if (!phrase) continue;
+        if (lower.includes(phrase.toLowerCase())) {
+          const score = Number.isFinite(h.score) ? Math.max(0, Math.min(1, h.score)) : 0.6;
+          if (score > maxScore) maxScore = score;
+        }
+      }
+      return maxScore;
+    }, [activeHighlights]);
+
     // Handle summarization
     const handleSummarize = useCallback(async (length: 'brief' | 'detailed') => {
       if (!originalText) return;
       
-      const result = await summarizeText(originalText, industryMode, length);
+      const result = await summarizeText(originalText, length);
       if (result) {
-        setText(result);
+        setText(result.summary);
+        setActiveHighlights(result.highlights || []);
         setTextMode(length);
         toast({
           title: "Summary ready",
           description: `${length === 'brief' ? 'Brief' : 'Detailed'} summary loaded for reading.`,
         });
       }
-    }, [originalText, industryMode, summarizeText, setText, toast]);
+    }, [originalText, summarizeText, setText, toast]);
 
     // Restore original text
     const handleRestoreOriginal = useCallback(() => {
       if (originalText) {
         setText(originalText);
         setTextMode('original');
+        setActiveHighlights([]);
         clearResults();
         toast({ title: "Original text restored" });
       }
@@ -338,6 +357,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
             word={currentWord} 
             fontSize={settings.fontSize}
             isKeyTerm={pacingData?.[currentIndex]?.isKeyTerm}
+            highlightScore={textMode !== 'original' ? getHighlightScoreForText(currentWord) : 0}
           />
           
           {/* Eye tracking indicator */}

@@ -4,6 +4,7 @@ interface WordDisplayProps {
   word: string;
   fontSize: number;
   isKeyTerm?: boolean;
+  highlightScore?: number;
 }
 
 // Find the optimal recognition point (ORP) - typically around 30% into the word
@@ -14,7 +15,7 @@ const getORPIndex = (word: string): number => {
   return Math.floor(cleanWord.length * 0.3);
 };
 
-export const WordDisplay = ({ word, fontSize, isKeyTerm }: WordDisplayProps) => {
+export const WordDisplay = ({ word, fontSize, isKeyTerm, highlightScore = 0 }: WordDisplayProps) => {
   const { before, focal, after } = useMemo(() => {
     if (!word) return { before: '', focal: '', after: '' };
     
@@ -73,10 +74,13 @@ export const WordDisplay = ({ word, fontSize, isKeyTerm }: WordDisplayProps) => 
         
         {/* Word container */}
         <div 
-          className={`font-mono tracking-wide animate-word-enter flex items-center whitespace-nowrap ${
-            isKeyTerm ? 'ring-2 ring-primary/30 ring-offset-4 ring-offset-background rounded-lg px-4' : ''
-          }`}
-          style={{ fontSize }}
+          className={`font-mono tracking-wide animate-word-enter flex items-center whitespace-nowrap relative ${
+            highlightScore > 0 ? 'rsvp-highlighted-word' : ''
+          } ${isKeyTerm ? 'ring-2 ring-primary/30 ring-offset-4 ring-offset-background rounded-lg px-4' : ''}`}
+          style={{
+            fontSize,
+            ...(highlightScore > 0 ? { ['--rsvp-highlight-alpha' as string]: String(0.08 + highlightScore * 0.18) } : {}),
+          }}
         >
           <span className="text-foreground">{before}</span>
           <span className="text-primary text-glow font-semibold">{focal}</span>
