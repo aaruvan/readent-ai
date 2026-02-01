@@ -9,19 +9,18 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 interface SmartSummaryRequest {
   text: string;
   summary_length?: "brief" | "detailed";
-  industry?: string | null;
 }
-
-const VALID_INDUSTRIES = ["legal", "medical", "technical"] as const;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -35,10 +34,6 @@ serve(async (req) => {
     const body = (await req.json()) as SmartSummaryRequest;
     const { text } = body;
     const summaryLength = body.summary_length === "brief" ? "brief" : "detailed";
-    const industry =
-      body.industry && VALID_INDUSTRIES.includes(body.industry as typeof VALID_INDUSTRIES[number])
-        ? body.industry
-        : "general";
 
     if (!text || typeof text !== "string") {
       return new Response(
@@ -59,7 +54,6 @@ serve(async (req) => {
           variables: {
             selected_text: text,
             summary_length: summaryLength,
-            industry,
           },
         },
         customer_identifier: "swift_insight_reader",
@@ -98,7 +92,20 @@ serve(async (req) => {
       );
     }
 
-    return new Response(JSON.stringify({ result: content.trim() }), {
+    let result: unknown = content.trim();
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as unknown;
+        if (parsed && typeof parsed === "object") {
+          result = parsed;
+        }
+      }
+    } catch {
+      // Fall back to raw content
+    }
+
+    return new Response(JSON.stringify({ result }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

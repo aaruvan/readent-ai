@@ -18,6 +18,11 @@
       .trim();
     return t;
   }
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
   const TOAST_ID = 'swift-insight-reader-toast';
 
   // Supabase config for smart-pacer edge function
@@ -79,6 +84,47 @@
     const mins = Math.floor(seconds / 60);
     const secs = Math.ceil(seconds % 60);
     return secs > 0 ? mins + 'm ' + secs + 's' : mins + 'm';
+  }
+
+  function buildHighlightRanges(text, highlights) {
+    if (!text || !Array.isArray(highlights) || highlights.length === 0) return [];
+    const lowerText = text.toLowerCase();
+    const ranges = [];
+    for (const h of highlights) {
+      const phrase = String(h?.phrase || h?.text || h?.label || '').trim();
+      if (!phrase || phrase.length < 2) continue;
+      const lowerPhrase = phrase.toLowerCase();
+      let idx = 0;
+      while ((idx = lowerText.indexOf(lowerPhrase, idx)) !== -1) {
+        const scoreRaw = Number(h?.score ?? h?.importance ?? h?.weight);
+        const score = Number.isFinite(scoreRaw) ? Math.max(0, Math.min(1, scoreRaw)) : 0.6;
+        ranges.push({ start: idx, end: idx + phrase.length, score });
+        idx += lowerPhrase.length;
+      }
+    }
+    ranges.sort((a, b) => (a.start - b.start) || (b.end - b.start - (a.end - a.start)));
+    const merged = [];
+    for (const r of ranges) {
+      const last = merged[merged.length - 1];
+      if (last && r.start < last.end) continue;
+      merged.push(r);
+    }
+    return merged;
+  }
+
+  function buildHighlightedHtml(text, highlights) {
+    const ranges = buildHighlightRanges(text, highlights);
+    if (ranges.length === 0) return escapeHtml(text);
+    let html = '';
+    let pos = 0;
+    for (const r of ranges) {
+      html += escapeHtml(text.slice(pos, r.start));
+      const level = r.score >= 0.8 ? 'high' : r.score >= 0.55 ? 'med' : 'low';
+      html += '<span class="sir-highlight sir-highlight-' + level + '">' + escapeHtml(text.slice(r.start, r.end)) + '</span>';
+      pos = r.end;
+    }
+    html += escapeHtml(text.slice(pos));
+    return html;
   }
 
 
@@ -165,8 +211,10 @@
       goal: smartPacerOpts.goal,
       originalText: summaryOpts.originalText,
       summaryText: null,
+      summaryHighlights: [],
       summaryLoading: false,
       summarizeOnOpen: summaryOpts.summarizeFirst,
+      textSource: 'original',
     };
 
     const root = document.createElement('div');
@@ -234,7 +282,10 @@
     summaryBtn.type = 'button';
     summaryBtn.className = 'sir-summary-btn';
     summaryBtn.title = 'Summarize text before reading';
-    summaryBtn.innerHTML = '<span class="sir-summary-icon">✨</span>';
+    summaryBtn.innerHTML = '<span class="sir-summary-icon">✨</span><span class="sir-summary-label">Summary</span>';
+
+    const summaryStatus = document.createElement('span');
+    summaryStatus.className = 'sir-summary-status';
 
     const contextBtn = document.createElement('button');
     contextBtn.type = 'button';
@@ -286,6 +337,7 @@
     rightGroup.className = 'sir-control-right';
     rightGroup.appendChild(translucentBtn);
     rightGroup.appendChild(summaryBtn);
+    rightGroup.appendChild(summaryStatus);
     rightGroup.appendChild(contextBtn);
     rightGroup.appendChild(smartPacerBtn);
     rightGroup.appendChild(settingsWrap);
@@ -301,6 +353,12 @@
     contextBefore.className = 'sir-context-before';
     const contextAfter = document.createElement('div');
     contextAfter.className = 'sir-context-after';
+    const highlightLegend = document.createElement('div');
+    highlightLegend.className = 'sir-highlight-legend';
+    highlightLegend.innerHTML =
+      '<span class="sir-highlight-swatch sir-highlight-swatch-high"></span><span>High</span>' +
+      '<span class="sir-highlight-swatch sir-highlight-swatch-med"></span><span>Med</span>' +
+      '<span class="sir-highlight-swatch sir-highlight-swatch-low"></span><span>Low</span>';
     const wordInner = document.createElement('div');
     wordInner.className = 'sir-word-inner';
     const orpLine = document.createElement('div');
@@ -326,6 +384,7 @@
     wordArea.appendChild(contextBefore);
     wordArea.appendChild(wordInner);
     wordArea.appendChild(contextAfter);
+    wordArea.appendChild(highlightLegend);
 
     // Playback
     const playback = document.createElement('div');
@@ -432,11 +491,20 @@
       const chunk = getDisplayChunk();
       const { currentIndex: i, settings: s } = state;
       const advance = (state.pacingData?.length) ? 1 : s.wordsAtATime;
+      const useHighlights = state.textSource === 'summary' && state.summaryHighlights.length > 0;
+      const setContextContent = (el, text) => {
+        if (useHighlights) {
+          el.innerHTML = buildHighlightedHtml(text, state.summaryHighlights);
+        } else {
+          el.textContent = text;
+        }
+      };
 
       const isFinished = i >= units.length && units.length > 0;
       if (isFinished) {
         contextBefore.textContent = '';
         contextAfter.textContent = '';
+        highlightLegend.style.display = 'none';
         wordArea.classList.remove('sir-show-context');
       } else {
         wordArea.classList.toggle('sir-show-context', s.showContext);
@@ -451,7 +519,8 @@
               break;
             }
           }
-          contextBefore.textContent = units.slice(beforeStart, i).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
+          const beforeText = units.slice(beforeStart, i).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
+          setContextContent(contextBefore, beforeText);
           contextBefore.scrollTop = contextBefore.scrollHeight;
 
           // Bottom: rest of current sentence + next full sentence
@@ -473,10 +542,13 @@
           }
           const afterRest = units.slice(readEnd, currEnd).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
           const afterNext = units.slice(nextStart, nextEnd).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
-          contextAfter.textContent = afterRest + (afterRest && afterNext ? ' ' : '') + afterNext;
+          const afterText = afterRest + (afterRest && afterNext ? ' ' : '') + afterNext;
+          setContextContent(contextAfter, afterText);
+          highlightLegend.style.display = useHighlights ? 'flex' : 'none';
         } else {
           contextBefore.textContent = '';
           contextAfter.textContent = '';
+          highlightLegend.style.display = 'none';
         }
       }
 
@@ -536,6 +608,22 @@
       summaryBtn.classList.toggle('sir-summary-active', Boolean(state.summaryText));
       summaryBtn.classList.toggle('sir-summary-loading', state.summaryLoading);
       summaryBtn.disabled = state.summaryLoading;
+      summaryBtn.title = state.summaryText
+        ? (state.textSource === 'summary' ? 'Switch to original text' : 'Switch to summary')
+        : 'Summarize text before reading';
+      const summaryLabel = summaryBtn.querySelector('.sir-summary-label');
+      if (summaryLabel) {
+        summaryLabel.textContent = state.summaryText
+          ? (state.textSource === 'summary' ? 'Original' : 'Summary')
+          : 'Summary';
+      }
+      summaryStatus.textContent = state.summaryText
+        ? (state.textSource === 'summary' ? 'Summary on' : 'Original text')
+        : 'Original text';
+      summaryStatus.classList.toggle('sir-summary-status-active', state.textSource === 'summary');
+      if (state.summaryText && state.summaryHighlights.length) {
+        summaryStatus.textContent += ' • ' + state.summaryHighlights.length + ' highlights';
+      }
       contextBtn.classList.toggle('sir-context-active', state.settings.showContext);
       smartPacerBtn.classList.toggle('sir-smart-pacer-active', state.smartPacerEnabled);
       smartPacerBtn.classList.toggle('sir-smart-pacer-loading', state.smartPacerLoading);
@@ -544,7 +632,7 @@
       wordsWrap.title = state.smartPacerEnabled ? 'Words locked when Smart Pacer is on' : '';
     }
 
-    function applyTextUpdate(nextText, isSummary) {
+    function applyTextUpdate(nextText, source, highlights) {
       const nextWords = cleanText(nextText).split(/\s+/).filter(w => w.length > 0);
       if (nextWords.length === 0) {
         showToast('Summary returned no text.');
@@ -558,7 +646,13 @@
       state.words = nextWords;
       state.currentIndex = 0;
       state.pacingData = null;
-      state.summaryText = isSummary ? nextText : null;
+      if (source === 'summary') {
+        state.summaryText = nextText;
+        state.summaryHighlights = Array.isArray(highlights) ? highlights : [];
+        state.textSource = 'summary';
+      } else {
+        state.textSource = 'original';
+      }
       updateWordDisplay();
       updateTimeAndProgress();
       updateControls();
@@ -583,14 +677,34 @@
           body: JSON.stringify({
             text: state.originalText,
             summary_length: 'brief',
-            industry: null,
           }),
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        const summary = typeof data.result === 'string' ? data.result.trim() : '';
+        let summary = '';
+        let summaryHighlights = [];
+        const result = data.result;
+        if (result && typeof result === 'object') {
+          summary = String(result.summary || result.text || '').trim();
+          if (Array.isArray(result.highlights)) summaryHighlights = result.highlights;
+        } else if (typeof result === 'string') {
+          const trimmed = result.trim();
+          if (trimmed.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (parsed && typeof parsed === 'object') {
+                summary = String(parsed.summary || parsed.text || '').trim();
+                if (Array.isArray(parsed.highlights)) summaryHighlights = parsed.highlights;
+              }
+            } catch {
+              summary = trimmed;
+            }
+          } else {
+            summary = trimmed;
+          }
+        }
         if (!summary) throw new Error('Summary was empty.');
-        applyTextUpdate(summary, true);
+        applyTextUpdate(summary, 'summary', summaryHighlights);
         if (!silent) showToast('Summary ready');
       } catch (err) {
         showToast(err instanceof Error ? err.message : 'Summary failed');
@@ -814,7 +928,20 @@
       });
     });
 
-    summaryBtn.addEventListener('click', () => fetchSummary(false));
+    summaryBtn.addEventListener('click', () => {
+      if (state.summaryLoading) return;
+      if (state.summaryText) {
+        if (state.textSource === 'summary') {
+          applyTextUpdate(state.originalText, 'original');
+          showToast('Original text restored');
+        } else {
+          applyTextUpdate(state.summaryText, 'summary');
+          showToast('Summary on');
+        }
+        return;
+      }
+      fetchSummary(false);
+    });
 
     contextBtn.addEventListener('click', () => {
       state.settings.showContext = !state.settings.showContext;

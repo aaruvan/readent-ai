@@ -114,6 +114,10 @@
   cursor: pointer;
 }
 
+.sir-summary-label {
+  font-size: 12px;
+}
+
 .sir-summary-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
@@ -140,6 +144,25 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: sir-spin 0.6s linear infinite;
+}
+
+.sir-summary-status {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sir-summary-status.sir-summary-status-active {
+  color: #58a6ff;
+  background: rgba(88, 166, 255, 0.18);
+  border-color: rgba(88, 166, 255, 0.45);
 }
 
 .sir-close-btn:hover {
@@ -381,6 +404,53 @@
 .sir-word-area.sir-show-context .sir-context-before,
 .sir-word-area.sir-show-context .sir-context-after {
   display: block;
+}
+
+.sir-highlight-legend {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sir-highlight-swatch {
+  width: 18px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: inline-block;
+}
+
+.sir-highlight-swatch-high {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.6), rgba(88, 166, 255, 0.2));
+}
+
+.sir-highlight-swatch-med {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.35), rgba(88, 166, 255, 0.12));
+}
+
+.sir-highlight-swatch-low {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.15), rgba(88, 166, 255, 0.05));
+}
+
+.sir-highlight {
+  padding: 0 2px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.sir-highlight-low {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.15), rgba(88, 166, 255, 0.05));
+}
+
+.sir-highlight-med {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.35), rgba(88, 166, 255, 0.12));
+}
+
+.sir-highlight-high {
+  background: linear-gradient(90deg, rgba(88, 166, 255, 0.6), rgba(88, 166, 255, 0.2));
 }
 
 .sir-word-inner {
