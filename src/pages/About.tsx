@@ -17,7 +17,7 @@ From day one, this product was built AI-first. We use Keywords AI to compare and
 
 Our AI-powered summarization doesn’t just shorten text — it preserves meaning. Key relationships, constraints, and risks are retained, while the original text is dynamically highlighted so readers always understand what matters and where it came from.
 
-The system adapts in real time. Simple passages accelerate. Dense or critical sections slow down. When attention breaks, reading pauses, rewinds to a safe point, and resumes deliberately. Nothing is skipped. Nothing is rushed.
+The system adapts in real time. Simple passages accelerate. Dense or critical sections slow down. Reading breaks are inevitable. People step away, get interrupted, or lose focus. When that happens, our system doesn’t blindly continue. It detects absence, pauses intelligently, rewinds to a safe point, and resumes at a controlled pace when the reader returns. Nothing is skipped. Nothing is rushed. Reading becomes resilient instead of fragile.
 
 This foundation scales naturally into industries where missing information carries real consequences:
 
