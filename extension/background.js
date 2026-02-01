@@ -64,7 +64,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       if (tabs[0]?.id && request.text?.trim()) {
         try {
-          await ensureAndSend(tabs[0].id, { action: 'startReader', text: request.text.trim() });
+          await ensureAndSend(tabs[0].id, {
+            action: 'startReader',
+            text: request.text.trim(),
+            summarize: Boolean(request.summarize),
+          });
         } catch (_) {}
       }
     });

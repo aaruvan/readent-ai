@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:extension": "esbuild extension/eye-tracking/face-detector-tracker.ts --bundle --format=esm --platform=browser --outfile=extension/vendor/face-detector-tracker.js",
+    "build:extension": "node -e \"console.log('Extension build: no eye-tracking assets to bundle.');\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

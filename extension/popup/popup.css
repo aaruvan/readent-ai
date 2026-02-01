@@ -86,6 +86,14 @@ body {
   cursor: pointer;
 }
 
+.start-btn.start-btn-secondary {
+  background: #6c757d;
+}
+
+.start-btn.start-btn-secondary:hover:not(:disabled) {
+  background: #5b636a;
+}
+
 .start-btn:hover:not(:disabled) {
   background: #d45303;
 }
