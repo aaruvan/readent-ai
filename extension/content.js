@@ -230,6 +230,12 @@
     translucentBtn.title = 'Toggle overlay transparency';
     translucentBtn.innerHTML = state.translucentOverlay ? iconOpaque : iconTranslucent;
 
+    const summaryBtn = document.createElement('button');
+    summaryBtn.type = 'button';
+    summaryBtn.className = 'sir-summary-btn';
+    summaryBtn.title = 'Summarize text before reading';
+    summaryBtn.innerHTML = '<span class="sir-summary-icon">✨</span>';
+
     const contextBtn = document.createElement('button');
     contextBtn.type = 'button';
     contextBtn.className = 'sir-context-btn';
@@ -279,6 +285,7 @@
     const rightGroup = document.createElement('div');
     rightGroup.className = 'sir-control-right';
     rightGroup.appendChild(translucentBtn);
+    rightGroup.appendChild(summaryBtn);
     rightGroup.appendChild(contextBtn);
     rightGroup.appendChild(smartPacerBtn);
     rightGroup.appendChild(settingsWrap);
@@ -500,6 +507,10 @@
       wordBox.style.fontSize = state.settings.fontSize + 'px';
       keyTermBadge.style.display = 'none';
       wordBox.classList.remove('sir-key-term');
+    }
+
+    function getRecoveryMultiplier() {
+      return 1;
     }
 
     function updateTimeAndProgress() {
@@ -802,6 +813,8 @@
         chrome.storage.sync.set({ rsvpSettings: s });
       });
     });
+
+    summaryBtn.addEventListener('click', () => fetchSummary(false));
 
     contextBtn.addEventListener('click', () => {
       state.settings.showContext = !state.settings.showContext;
