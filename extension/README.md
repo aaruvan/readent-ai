@@ -9,7 +9,7 @@ Chrome extension (Manifest V3) that turns selected text on any webpage into an R
 - **Selection preview**: Popup shows selected text preview and word count when opened.
 - **ORP highlight**: Optimal Recognition Point (orange focal character) for faster recognition.
 - **Adaptive pacing**: Slower on long words, punctuation, numbers, capitals; faster on short words.
-- **AI Smart Pacer**: Click the 🧠 button to analyze text with AI for per-word pacing (requires deployed `smart-pacer` edge function).
+- **AI Smart Pacer**: Click the **Smart** button to analyze text with AI for per-word pacing (requires deployed `smart-pacer` edge function).
 - **Controls**: WPM slider (50–1200), words-at-a-time (1–5), font size, play/pause, skip, restart.
 - **Persistent WPM**: Default WPM saved and synced across devices.
 - **Keyboard**: Alt+R (open reader), Alt+Space (play/pause when reader open), Space, ←/→, ↑/↓, R, Escape.
@@ -29,7 +29,7 @@ Chrome extension (Manifest V3) that turns selected text on any webpage into an R
    - Right-click → **Speed Read Selection**, or
    - Click the extension icon and click **Start Reading**.
 3. The overlay opens. Press **Space** to start; use the controls or keyboard as needed.
-4. (Optional) Click **Smart** (🧠) to enable AI pacing — the extension calls the `smart-pacer` Supabase edge function.
+4. (Optional) Click **Smart** to enable AI pacing — the extension calls the `smart-pacer` Supabase edge function.
 5. Press **Escape** or click **Close** to dismiss.
 
 ## Keyboard Shortcuts

@@ -5,6 +5,18 @@
 
 (function () {
   const OVERLAY_ID = 'swift-insight-reader-root';
+
+  /** Clean text before display and LLM: normalize whitespace, remove invisible chars. */
+  function cleanText(text) {
+    if (typeof text !== 'string') return '';
+    let t = text
+      .replace(/\r\n|\r/g, '\n')
+      .replace(/[\t\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+      .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return t;
+  }
   const TOAST_ID = 'swift-insight-reader-toast';
 
   // Supabase config for smart-pacer edge function
@@ -27,6 +39,9 @@
       const mid = Math.floor(parts.length / 2);
       const target = parts[mid];
       const orp = getORPIndex(target);
+      if (target.length <= 2) {
+        return { before: word, focal: '', after: '' };
+      }
       const beforeWords = parts.slice(0, mid).join(' ');
       const afterWords = parts.slice(mid + 1).join(' ');
       return {
@@ -129,31 +144,34 @@
       closeOverlay();
     }
 
-    const words = text.split(/\s+/).filter(w => w.length > 0);
+    const cleaned = cleanText(text);
+    const words = cleaned.split(/\s+/).filter(w => w.length > 0);
     if (words.length === 0) {
       showToast('No text to read.');
       return;
     }
 
     // Load saved settings from storage
-    const defaultSettings = { wpm: 300, wordsAtATime: 1, fontSize: 48 };
+    const defaultSettings = { wpm: 300, wordsAtATime: 1, fontSize: 48, showContext: false };
     const eyeTrackingDefaults = { enabled: false, rewindWords: 6, rampWords: 10 };
-    const smartPacerOpts = { industry: null, comprehension: 'normal', goal: 'maintain' };
+    const smartPacerOpts = { comprehension: 'normal', goal: 'maintain' };
+    let translucentOverlay = false;
     chrome.storage.sync.get(['rsvpSettings'], (result) => {
       const stored = result.rsvpSettings || {};
       if (stored.wpm) defaultSettings.wpm = Math.max(50, Math.min(1200, stored.wpm));
-      if (stored.industry && stored.industry !== 'general') smartPacerOpts.industry = stored.industry;
       if (stored.comprehension) smartPacerOpts.comprehension = stored.comprehension;
       if (stored.goal) smartPacerOpts.goal = stored.goal;
+      if (typeof stored.showContext === 'boolean') defaultSettings.showContext = stored.showContext;
+      if (typeof stored.translucentOverlay === 'boolean') translucentOverlay = stored.translucentOverlay;
       if (typeof stored.eyeTrackingEnabled === 'boolean') eyeTrackingDefaults.enabled = stored.eyeTrackingEnabled;
       if (stored.eyeTrackingRewindWords) eyeTrackingDefaults.rewindWords = stored.eyeTrackingRewindWords;
       if (stored.eyeTrackingRampWords) eyeTrackingDefaults.rampWords = stored.eyeTrackingRampWords;
       const smartPacerOn = stored.smartPacerDefault !== false;
-      createOverlayWithSettings(words, defaultSettings, smartPacerOn, smartPacerOpts, eyeTrackingDefaults);
+      createOverlayWithSettings(words, defaultSettings, smartPacerOn, smartPacerOpts, eyeTrackingDefaults, translucentOverlay);
     });
   }
 
-  function createOverlayWithSettings(words, defaultSettings, smartPacerOnByDefault, smartPacerOpts, eyeTrackingDefaults) {
+  function createOverlayWithSettings(words, defaultSettings, smartPacerOnByDefault, smartPacerOpts, eyeTrackingDefaults, translucentOverlay) {
     if (document.getElementById(OVERLAY_ID)) closeOverlay();
 
     const state = {
@@ -165,7 +183,9 @@
       pacingData: null,
       smartPacerEnabled: smartPacerOnByDefault,
       smartPacerLoading: false,
-      industry: smartPacerOpts.industry,
+      translucentOverlay: translucentOverlay === true,
+      readStartTime: null,
+      readElapsedSeconds: null,
       comprehension: smartPacerOpts.comprehension,
       goal: smartPacerOpts.goal,
       eyeTrackingEnabled: eyeTrackingDefaults.enabled,
@@ -184,6 +204,7 @@
 
     const root = document.createElement('div');
     root.id = OVERLAY_ID;
+    if (state.translucentOverlay) root.classList.add('sir-translucent');
 
     // Control bar
     const controlBar = document.createElement('div');
@@ -238,28 +259,43 @@
     controlGroup.appendChild(wordsWrap);
     controlGroup.appendChild(fontWrap);
 
+    const iconTranslucent = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="10" height="10" rx="1" opacity="0.8"/><rect x="10" y="10" width="10" height="10" rx="1"/></svg>';
+    const iconOpaque = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>';
+    const iconContext = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
+    const iconSmart = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>';
+    const iconGear = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+    const iconSkipBack = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>';
+    const iconPlay = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    const iconPause = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    const iconSkipFwd = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>';
+    const iconStop = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>';
+
+    const translucentBtn = document.createElement('button');
+    translucentBtn.type = 'button';
+    translucentBtn.className = 'sir-translucent-btn';
+    translucentBtn.title = 'Toggle overlay transparency';
+    translucentBtn.innerHTML = state.translucentOverlay ? iconOpaque : iconTranslucent;
+
+    const contextBtn = document.createElement('button');
+    contextBtn.type = 'button';
+    contextBtn.className = 'sir-context-btn';
+    contextBtn.title = 'Show surrounding text context';
+    contextBtn.innerHTML = '<span class="sir-context-icon">' + iconContext + '</span>';
+
     const smartPacerBtn = document.createElement('button');
     smartPacerBtn.type = 'button';
     smartPacerBtn.className = 'sir-smart-pacer-btn';
     smartPacerBtn.title = 'AI Smart Pacer: analyze text for adaptive pacing';
-    smartPacerBtn.innerHTML = '<span class="sir-smart-pacer-icon">🧠</span><span class="sir-smart-pacer-label">Smart</span>';
+    smartPacerBtn.innerHTML = '<span class="sir-smart-pacer-icon"><span class="sir-smart-icon-svg">' + iconSmart + '</span><span class="sir-smart-spinner"></span></span>';
 
     const settingsBtn = document.createElement('button');
     settingsBtn.type = 'button';
     settingsBtn.className = 'sir-settings-btn';
     settingsBtn.title = 'Smart Pacer settings';
-    settingsBtn.innerHTML = '⚙';
+    settingsBtn.innerHTML = iconGear;
     const settingsPopover = document.createElement('div');
     settingsPopover.className = 'sir-settings-popover sir-hidden';
     settingsPopover.innerHTML = `
-      <div class="sir-settings-row"><label>Industry</label>
-        <select class="sir-settings-industry">
-          <option value="">General</option>
-          <option value="legal">Legal</option>
-          <option value="medical">Medical</option>
-          <option value="technical">Technical</option>
-        </select>
-      </div>
       <div class="sir-settings-row"><label>Comprehension</label>
         <select class="sir-settings-comprehension">
           <option value="skim">Skim</option>
@@ -292,14 +328,24 @@
     settingsWrap.appendChild(settingsBtn);
     settingsWrap.appendChild(settingsPopover);
 
+    const rightGroup = document.createElement('div');
+    rightGroup.className = 'sir-control-right';
+    rightGroup.appendChild(translucentBtn);
+    rightGroup.appendChild(contextBtn);
+    rightGroup.appendChild(smartPacerBtn);
+    rightGroup.appendChild(settingsWrap);
+    rightGroup.appendChild(closeBtn);
+
     controlBar.appendChild(controlGroup);
-    controlBar.appendChild(smartPacerBtn);
-    controlBar.appendChild(settingsWrap);
-    controlBar.appendChild(closeBtn);
+    controlBar.appendChild(rightGroup);
 
     // Word area
     const wordArea = document.createElement('div');
     wordArea.className = 'sir-word-area';
+    const contextBefore = document.createElement('div');
+    contextBefore.className = 'sir-context-before';
+    const contextAfter = document.createElement('div');
+    contextAfter.className = 'sir-context-after';
     const wordInner = document.createElement('div');
     wordInner.className = 'sir-word-inner';
     const orpLine = document.createElement('div');
@@ -311,18 +357,20 @@
     const wordBox = document.createElement('div');
     wordBox.className = 'sir-word-box';
     const spanBefore = document.createElement('span');
-    spanBefore.className = 'before';
+    spanBefore.className = 'sir-orp-before';
     const spanFocal = document.createElement('span');
-    spanFocal.className = 'focal';
+    spanFocal.className = 'sir-orp-focal';
     const spanAfter = document.createElement('span');
-    spanAfter.className = 'after';
+    spanAfter.className = 'sir-orp-after';
     wordBox.appendChild(spanBefore);
     wordBox.appendChild(spanFocal);
     wordBox.appendChild(spanAfter);
     wordInner.appendChild(orpLine);
     wordInner.appendChild(keyTermBadge);
     wordInner.appendChild(wordBox);
+    wordArea.appendChild(contextBefore);
     wordArea.appendChild(wordInner);
+    wordArea.appendChild(contextAfter);
 
     // Playback
     const playback = document.createElement('div');
@@ -350,22 +398,22 @@
     const btnBack = document.createElement('button');
     btnBack.type = 'button';
     btnBack.className = 'sir-btn-icon sir-skip-back';
-    btnBack.innerHTML = '⏪';
+    btnBack.innerHTML = iconSkipBack;
     btnBack.title = 'Skip backward';
     const btnPlay = document.createElement('button');
     btnPlay.type = 'button';
     btnPlay.className = 'sir-btn-icon sir-btn-play sir-play-pause';
-    btnPlay.innerHTML = '▶';
+    btnPlay.innerHTML = iconPlay;
     btnPlay.title = 'Play';
     const btnFwd = document.createElement('button');
     btnFwd.type = 'button';
     btnFwd.className = 'sir-btn-icon sir-skip-fwd';
-    btnFwd.innerHTML = '⏩';
+    btnFwd.innerHTML = iconSkipFwd;
     btnFwd.title = 'Skip forward';
     const btnStop = document.createElement('button');
     btnStop.type = 'button';
     btnStop.className = 'sir-btn-icon sir-stop';
-    btnStop.innerHTML = '⏹';
+    btnStop.innerHTML = iconStop;
     btnStop.title = 'Restart';
     buttons.appendChild(btnBack);
     buttons.appendChild(btnPlay);
@@ -380,14 +428,104 @@
     document.body.appendChild(root);
 
     // --- Update UI from state ---
-    function getDisplayWords() {
-      const { words: w, currentIndex: i, settings: s } = state;
-      return w.slice(i, i + s.wordsAtATime).join(' ');
+    function getDisplayUnits() {
+      if (state.pacingData && state.pacingData.length > 0) {
+        return state.pacingData.map((x) => ({
+          chunk: String(x && (x.chunk != null ? x.chunk : x.word != null ? x.word : '')).trim(),
+          multiplier: x && typeof x.multiplier === 'number' ? x.multiplier : null,
+        }));
+      }
+      return state.words.map((w) => ({ chunk: w, multiplier: null }));
+    }
+
+    function getDisplayChunk() {
+      const units = getDisplayUnits();
+      const i = state.currentIndex;
+      const s = state.settings;
+      if (state.pacingData && state.pacingData.length > 0) {
+        return units[i]?.chunk ?? '';
+      }
+      return state.words.slice(i, i + s.wordsAtATime).join(' ');
+    }
+
+    function getUnitWordCount(unit) {
+      const chunk = unit && (unit.chunk != null ? unit.chunk : unit.word);
+      return (chunk != null ? String(chunk) : '').trim().split(/\s+/).filter(Boolean).length || 1;
+    }
+
+    function endsSentence(text) {
+      return /[.!?]$/.test(text) || /^[.!?]+$/.test(text);
+    }
+
+    function getSentenceRanges(units) {
+      const ranges = [];
+      let start = 0;
+      for (let j = 0; j < units.length; j++) {
+        const u = units[j];
+        const chunk = u && (u.chunk != null ? u.chunk : u.word);
+        if (chunk != null && endsSentence(String(chunk))) {
+          ranges.push({ start, end: j + 1 });
+          start = j + 1;
+        }
+      }
+      if (start < units.length) ranges.push({ start, end: units.length });
+      return ranges;
     }
 
     function updateWordDisplay() {
-      const word = getDisplayWords();
-      if (!word) {
+      const units = getDisplayUnits();
+      const chunk = getDisplayChunk();
+      const { currentIndex: i, settings: s } = state;
+      const advance = (state.pacingData?.length) ? 1 : s.wordsAtATime;
+
+      const isFinished = i >= units.length && units.length > 0;
+      if (isFinished) {
+        contextBefore.textContent = '';
+        contextAfter.textContent = '';
+        wordArea.classList.remove('sir-show-context');
+      } else {
+        wordArea.classList.toggle('sir-show-context', s.showContext);
+        if (s.showContext) {
+          const ranges = getSentenceRanges(units);
+
+          // Top: words read in current sentence so far (add word by word)
+          let beforeStart = 0;
+          for (const r of ranges) {
+            if (i >= r.start && i < r.end) {
+              beforeStart = r.start;
+              break;
+            }
+          }
+          contextBefore.textContent = units.slice(beforeStart, i).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
+          contextBefore.scrollTop = contextBefore.scrollHeight;
+
+          // Bottom: rest of current sentence + next full sentence
+          const readEnd = i + advance;
+          let currEnd = units.length;
+          let nextStart = units.length;
+          let nextEnd = units.length;
+          for (let ri = 0; ri < ranges.length; ri++) {
+            const r = ranges[ri];
+            if (i < r.end) {
+              currEnd = r.end;
+              const next = ranges[ri + 1];
+              if (next) {
+                nextStart = next.start;
+                nextEnd = next.end;
+              }
+              break;
+            }
+          }
+          const afterRest = units.slice(readEnd, currEnd).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
+          const afterNext = units.slice(nextStart, nextEnd).map((u) => (u && u.chunk != null ? u.chunk : '')).join(' ');
+          contextAfter.textContent = afterRest + (afterRest && afterNext ? ' ' : '') + afterNext;
+        } else {
+          contextBefore.textContent = '';
+          contextAfter.textContent = '';
+        }
+      }
+
+      if (!chunk) {
         wordBox.classList.remove('sir-key-term');
         keyTermBadge.style.display = 'none';
         spanBefore.textContent = '';
@@ -396,13 +534,18 @@
         wordBox.style.fontSize = state.settings.fontSize + 'px';
         const ready = wordInner.querySelector('.sir-ready-msg') || document.createElement('span');
         ready.className = 'sir-ready-msg';
-        ready.textContent = 'Ready to read';
+        if (isFinished && state.readElapsedSeconds != null) {
+          const totalWords = units.reduce((sum, u) => sum + getUnitWordCount(u), 0);
+          ready.textContent = 'You read ' + totalWords + ' words in ' + state.readElapsedSeconds + ' seconds!';
+        } else {
+          ready.textContent = 'Ready to read';
+        }
         if (!ready.parentNode) wordInner.appendChild(ready);
         return;
       }
       const ready = wordInner.querySelector('.sir-ready-msg');
       if (ready) ready.remove();
-      const { before, focal, after } = splitORP(word);
+      const { before, focal, after } = splitORP(chunk);
       spanBefore.textContent = before;
       spanFocal.textContent = focal;
       spanAfter.textContent = after;
@@ -412,13 +555,15 @@
     }
 
     function updateTimeAndProgress() {
-      const { words: w, currentIndex: i, settings: s } = state;
-      const remaining = Math.max(0, w.length - i);
-      const secs = (remaining / s.wpm) * 60;
+      const units = getDisplayUnits();
+      const { currentIndex: i, settings: s } = state;
+      const remainingUnits = Math.max(0, units.length - i);
+      const remainingWords = units.slice(i).reduce((sum, u) => sum + getUnitWordCount(u), 0);
+      const secs = (remainingWords / s.wpm) * 60;
       timeLeftEl.textContent = formatTime(secs);
-      const pct = w.length ? (i / w.length) * 100 : 0;
+      const pct = units.length ? (i / units.length) * 100 : 0;
       progressBar.value = pct;
-      progressLabelsSpan.textContent = i + ' / ' + w.length + ' words';
+      progressLabelsSpan.textContent = i + ' / ' + units.length + (state.pacingData?.length ? ' chunks' : ' words');
       progressPct.textContent = Math.round(pct) + '%';
     }
 
@@ -427,11 +572,14 @@
       wpmSlider.value = state.settings.wpm;
       wordsValueEl.textContent = state.settings.wordsAtATime;
       fontValueEl.textContent = state.settings.fontSize;
-      btnPlay.innerHTML = state.isPlaying ? '⏸' : '▶';
+      btnPlay.innerHTML = state.isPlaying ? iconPause : iconPlay;
       btnPlay.title = state.isPlaying ? 'Pause' : 'Play';
+      contextBtn.classList.toggle('sir-context-active', state.settings.showContext);
       smartPacerBtn.classList.toggle('sir-smart-pacer-active', state.smartPacerEnabled);
       smartPacerBtn.classList.toggle('sir-smart-pacer-loading', state.smartPacerLoading);
       smartPacerBtn.disabled = state.smartPacerLoading;
+      wordsWrap.classList.toggle('sir-words-locked', state.smartPacerEnabled);
+      wordsWrap.title = state.smartPacerEnabled ? 'Words locked when Smart Pacer is on' : '';
       updateAttentionIndicator();
     }
 
@@ -547,9 +695,7 @@
       state.smartPacerLoading = true;
       state.pacingData = null;
       updateControls();
-      if (!silent) showToast('Analyzing text for smart pacing...');
       try {
-        const text = state.words.join(' ');
         const res = await fetch(SUPABASE_URL + '/functions/v1/smart-pacer', {
           method: 'POST',
           headers: {
@@ -557,22 +703,21 @@
             'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            text,
+            text: state.words.join(' '),
             user_wpm: state.settings.wpm,
-            industry: state.industry || null,
             comprehension: state.comprehension,
             goal: state.goal,
           }),
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        if (data.result && Array.isArray(data.result) && data.result.length > 0) {
-          state.pacingData = data.result;
-          state.smartPacerEnabled = true;
-          if (!silent) showToast('Smart pacing enabled');
-        } else {
+        if (!data.result || !Array.isArray(data.result) || data.result.length === 0) {
           throw new Error('No pacing data returned');
         }
+        state.pacingData = data.result;
+        state.smartPacerEnabled = true;
+        updateWordDisplay();
+        updateTimeAndProgress();
       } catch (err) {
         state.smartPacerEnabled = false;
         state.pacingData = null;
@@ -580,13 +725,13 @@
       } finally {
         state.smartPacerLoading = false;
         updateControls();
+        updateTimeAndProgress();
       }
     }
 
     function toggleSmartPacer() {
       if (state.smartPacerEnabled) {
         state.smartPacerEnabled = false;
-        showToast('Smart pacing off');
         chrome.storage.sync.get(['rsvpSettings'], (result) => {
           const s = result.rsvpSettings || {};
           s.smartPacerDefault = false;
@@ -594,9 +739,7 @@
         });
       } else {
         state.smartPacerEnabled = true;
-        if (state.pacingData && state.pacingData.length === state.words.length) {
-          showToast('Smart pacing on');
-        } else {
+        if (!state.pacingData || state.pacingData.length === 0) {
           fetchSmartPacing(false);
         }
         chrome.storage.sync.get(['rsvpSettings'], (result) => {
@@ -616,6 +759,8 @@
       }
       state.isPlaying = false;
       state.currentIndex = 0;
+      state.readStartTime = null;
+      state.readElapsedSeconds = null;
       updateWordDisplay();
       updateTimeAndProgress();
       updateControls();
@@ -623,28 +768,33 @@
 
     function scheduleNext() {
       if (state.timerId) clearTimeout(state.timerId);
-      const { words: w, currentIndex: i, settings: s } = state;
-      if (i >= w.length) {
+      const units = getDisplayUnits();
+      const { currentIndex: i, settings: s } = state;
+      if (i >= units.length) {
         state.isPlaying = false;
         updateControls();
         return;
       }
-      const displayWords = w.slice(i, i + s.wordsAtATime).join(' ');
-      const baseDelay = (60 / s.wpm) * 1000 * s.wordsAtATime;
-      let aiMultiplier = null;
-      if (state.pacingData && state.pacingData[i]) {
-        aiMultiplier = state.pacingData[i].multiplier;
-      }
-      const delay = calculateWordDelay(displayWords, baseDelay, aiMultiplier) * getRecoveryMultiplier();
+      const advance = (state.pacingData?.length) ? 1 : s.wordsAtATime;
+      const unit = units[i];
+      const displayChunk = (state.pacingData?.length) ? unit.chunk : state.words.slice(i, i + advance).join(' ');
+      const wordCount = (state.pacingData?.length) ? getUnitWordCount(unit) : advance;
+      const baseDelayPerWord = (60 / s.wpm) * 1000;
+      const baseDelay = baseDelayPerWord * wordCount;
+      const aiMultiplier = unit.multiplier;
+      const delay = calculateWordDelay(displayChunk, baseDelay, aiMultiplier) * getRecoveryMultiplier();
 
       state.timerId = setTimeout(() => {
-        state.currentIndex = Math.min(i + s.wordsAtATime, w.length);
+        state.currentIndex = Math.min(i + advance, units.length);
         if (state.recoveryRemaining > 0) {
           state.recoveryRemaining -= 1;
         }
+        if (state.currentIndex >= units.length && state.readStartTime) {
+          state.readElapsedSeconds = Math.round((Date.now() - state.readStartTime) / 1000);
+        }
         updateWordDisplay();
         updateTimeAndProgress();
-        if (state.currentIndex < w.length) {
+        if (state.currentIndex < units.length) {
           scheduleNext();
         } else {
           state.isPlaying = false;
@@ -654,12 +804,15 @@
     }
 
     function play() {
-      if (state.words.length === 0) return;
-      if (state.currentIndex >= state.words.length) {
+      const units = getDisplayUnits();
+      if (units.length === 0) return;
+      if (state.currentIndex >= units.length) {
         state.currentIndex = 0;
+        state.readElapsedSeconds = null;
         updateWordDisplay();
         updateTimeAndProgress();
       }
+      if (state.currentIndex === 0) state.readStartTime = Date.now();
       state.isPlaying = true;
       updateControls();
       scheduleNext();
@@ -680,9 +833,10 @@
     }
 
     function skip(forward) {
-      const skipSize = Math.max(10, Math.floor(state.words.length * 0.05));
+      const units = getDisplayUnits();
+      const skipSize = Math.max(10, Math.floor(units.length * 0.05));
       if (forward) {
-        state.currentIndex = Math.min(state.currentIndex + skipSize, state.words.length - 1);
+        state.currentIndex = Math.min(state.currentIndex + skipSize, units.length - 1);
       } else {
         state.currentIndex = Math.max(state.currentIndex - skipSize, 0);
       }
@@ -716,8 +870,9 @@
     }
 
     function seek(pct) {
-      const idx = Math.floor((pct / 100) * state.words.length);
-      state.currentIndex = Math.max(0, Math.min(idx, state.words.length - 1));
+      const units = getDisplayUnits();
+      const idx = Math.floor((pct / 100) * units.length);
+      state.currentIndex = Math.max(0, Math.min(idx, units.length - 1));
       updateWordDisplay();
       updateTimeAndProgress();
       if (state.isPlaying) {
@@ -737,13 +892,34 @@
     fontWrap.querySelector('.sir-font-down').addEventListener('click', () => setFont(state.settings.fontSize - 4));
     fontWrap.querySelector('.sir-font-up').addEventListener('click', () => setFont(state.settings.fontSize + 4));
 
+    translucentBtn.addEventListener('click', () => {
+      state.translucentOverlay = !state.translucentOverlay;
+      root.classList.toggle('sir-translucent', state.translucentOverlay);
+      translucentBtn.innerHTML = state.translucentOverlay ? iconOpaque : iconTranslucent;
+      translucentBtn.title = state.translucentOverlay ? 'Switch to opaque overlay' : 'Switch to translucent overlay';
+      chrome.storage.sync.get(['rsvpSettings'], (result) => {
+        const s = result.rsvpSettings || {};
+        s.translucentOverlay = state.translucentOverlay;
+        chrome.storage.sync.set({ rsvpSettings: s });
+      });
+    });
+
+    contextBtn.addEventListener('click', () => {
+      state.settings.showContext = !state.settings.showContext;
+      updateWordDisplay();
+      updateControls();
+      chrome.storage.sync.get(['rsvpSettings'], (result) => {
+        const settings = result.rsvpSettings || {};
+        settings.showContext = state.settings.showContext;
+        chrome.storage.sync.set({ rsvpSettings: settings });
+      });
+    });
+
     smartPacerBtn.addEventListener('click', toggleSmartPacer);
 
-    const industrySelect = settingsPopover.querySelector('.sir-settings-industry');
     const comprehensionSelect = settingsPopover.querySelector('.sir-settings-comprehension');
     const goalSelect = settingsPopover.querySelector('.sir-settings-goal');
     const eyeToggle = settingsPopover.querySelector('.sir-settings-eye-toggle');
-    industrySelect.value = state.industry || '';
     comprehensionSelect.value = state.comprehension;
     goalSelect.value = state.goal;
     eyeToggle.checked = state.eyeTrackingEnabled;
@@ -759,7 +935,6 @@
     function persistSmartPacerOpts() {
       chrome.storage.sync.get(['rsvpSettings'], (result) => {
         const s = result.rsvpSettings || {};
-        s.industry = state.industry;
         s.comprehension = state.comprehension;
         s.goal = state.goal;
         chrome.storage.sync.set({ rsvpSettings: s });
@@ -776,11 +951,6 @@
       });
     }
 
-    industrySelect.addEventListener('change', () => {
-      state.industry = industrySelect.value || null;
-      persistSmartPacerOpts();
-      if (state.smartPacerEnabled) fetchSmartPacing(false);
-    });
     comprehensionSelect.addEventListener('change', () => {
       state.comprehension = comprehensionSelect.value;
       persistSmartPacerOpts();
