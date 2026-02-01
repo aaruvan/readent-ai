@@ -45,6 +45,12 @@ const DEFAULT_SETTINGS: RSVPSettings = {
   fontSize: 48,
 };
 
+// Slightly increase delay per extra word, not linear slowdown.
+const getChunkDelayMultiplier = (wordsAtATime: number): number => {
+  const clamped = Math.max(1, Math.min(5, wordsAtATime));
+  return 1 + (clamped - 1) * 0.3;
+};
+
 // Calculate delay based on word characteristics for adaptive pacing
 const calculateWordDelay = (
   word: string, 
@@ -167,10 +173,11 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
     // Get pacing info for the first word in the group
     const pacingInfo = currentPacing?.[index];
     
-    const baseDelay = (60 / currentSettings.wpm) * 1000 * currentSettings.wordsAtATime;
+    const baseDelay = (60 / currentSettings.wpm) * 1000;
+    const chunkMultiplier = getChunkDelayMultiplier(currentSettings.wordsAtATime);
     const rawDelay = calculateWordDelay(combinedWord, baseDelay, pacingInfo);
     const safeMultiplier = Math.max(0.1, currentMultiplier);
-    const delay = rawDelay / safeMultiplier;
+    const delay = (rawDelay * chunkMultiplier) / safeMultiplier;
 
     timerRef.current = setTimeout(() => {
       setCurrentIndex((prev) => {
@@ -297,8 +304,9 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
 
   // Calculate time estimates
   const wordsRemaining = Math.max(0, words.length - currentIndex);
-  const secondsRemaining = (wordsRemaining / settings.wpm) * 60;
-  const totalSeconds = (words.length / settings.wpm) * 60;
+  const effectiveWpm = settings.wpm / getChunkDelayMultiplier(settings.wordsAtATime);
+  const secondsRemaining = (wordsRemaining / effectiveWpm) * 60;
+  const totalSeconds = (words.length / effectiveWpm) * 60;
 
   // Cleanup on unmount
   useEffect(() => {

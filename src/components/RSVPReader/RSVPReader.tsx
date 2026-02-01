@@ -33,6 +33,8 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     const [originalText, setOriginalText] = useState('');
     const [rampUpMultiplier, setRampUpMultiplier] = useState(1);
     const [textMode, setTextMode] = useState<TextMode>('original');
+    const [pendingSummary, setPendingSummary] = useState<'brief' | 'detailed' | null>(null);
+    const summaryRequestRef = useRef(0);
 
     const {
       words,
@@ -241,8 +243,14 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     // Handle summarization
     const handleSummarize = useCallback(async (length: 'brief' | 'detailed') => {
       if (!originalText) return;
-      
+
+      summaryRequestRef.current += 1;
+      const requestId = summaryRequestRef.current;
+      setPendingSummary(length);
+
       const result = await summarizeText(originalText, length);
+      if (requestId !== summaryRequestRef.current) return;
+
       if (result) {
         setText(result.summary);
         setActiveHighlights(result.highlights || []);
@@ -252,11 +260,14 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
           description: `${length === 'brief' ? 'Brief' : 'Detailed'} summary loaded for reading.`,
         });
       }
+      setPendingSummary(null);
     }, [originalText, summarizeText, setText, toast]);
 
     // Restore original text
     const handleRestoreOriginal = useCallback(() => {
       if (originalText) {
+        summaryRequestRef.current += 1;
+        setPendingSummary(null);
         setText(originalText);
         setTextMode('original');
         setActiveHighlights([]);
@@ -342,6 +353,9 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
               onIndustryModeChange={setIndustryMode}
               onSummarize={handleSummarize}
               isSummarizing={isAILoading}
+              pendingSummary={pendingSummary}
+              textMode={textMode}
+              onRestoreOriginal={handleRestoreOriginal}
               isLookingAway={isLookingAway}
             />
           }

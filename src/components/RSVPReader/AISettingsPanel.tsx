@@ -33,6 +33,9 @@ interface AISettingsPanelProps {
   // Summarization
   onSummarize: (length: 'brief' | 'detailed') => void;
   isSummarizing: boolean;
+  pendingSummary: 'brief' | 'detailed' | null;
+  textMode: 'original' | 'brief' | 'detailed';
+  onRestoreOriginal: () => void;
   
   // Eye tracking status
   isLookingAway?: boolean;
@@ -54,6 +57,9 @@ export const AISettingsPanel = ({
   onIndustryModeChange,
   onSummarize,
   isSummarizing,
+  pendingSummary,
+  textMode,
+  onRestoreOriginal,
   isLookingAway,
 }: AISettingsPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -102,8 +108,9 @@ export const AISettingsPanel = ({
                 onClick={() => onSummarize('brief')}
                 disabled={isSummarizing}
                 className="flex-1"
+                aria-busy={isSummarizing && pendingSummary === 'brief'}
               >
-                {isSummarizing ? (
+                {isSummarizing && pendingSummary === 'brief' ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1" />
                 ) : null}
                 Brief
@@ -114,13 +121,24 @@ export const AISettingsPanel = ({
                 onClick={() => onSummarize('detailed')}
                 disabled={isSummarizing}
                 className="flex-1"
+                aria-busy={isSummarizing && pendingSummary === 'detailed'}
               >
-                {isSummarizing ? (
+                {isSummarizing && pendingSummary === 'detailed' ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1" />
                 ) : null}
                 Detailed
               </Button>
             </div>
+            {textMode !== 'original' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRestoreOriginal}
+                className="w-full"
+              >
+                Use Original Text
+              </Button>
+            )}
           </div>
 
           <Separator />

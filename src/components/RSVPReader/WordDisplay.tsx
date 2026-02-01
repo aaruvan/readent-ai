@@ -7,13 +7,26 @@ interface WordDisplayProps {
   highlightScore?: number;
 }
 
-// Find the optimal recognition point (ORP) - typically around 30% into the word
+// Find the optimal recognition point (ORP) index in the original word.
 const getORPIndex = (word: string): number => {
   const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
   if (cleanWord.length <= 1) return 0;
   if (cleanWord.length <= 2) return 0; /* short units like "cm", "m" -> first letter */
   if (cleanWord.length <= 3) return 1;
-  return Math.floor(cleanWord.length * 0.3);
+
+  const targetCleanIndex = Math.floor(cleanWord.length * 0.3);
+  let seen = 0;
+
+  for (let i = 0; i < word.length; i += 1) {
+    if (/[a-zA-Z0-9]/.test(word[i])) {
+      if (seen === targetCleanIndex) {
+        return i;
+      }
+      seen += 1;
+    }
+  }
+
+  return Math.max(0, Math.min(word.length - 1, targetCleanIndex));
 };
 
 export const WordDisplay = ({ word, fontSize, isKeyTerm, highlightScore = 0 }: WordDisplayProps) => {
@@ -23,18 +36,33 @@ export const WordDisplay = ({ word, fontSize, isKeyTerm, highlightScore = 0 }: W
     // Handle multiple words
     const words = word.split(' ');
     if (words.length > 1) {
-      // For multiple words, highlight the middle word's focal point
-      const midIndex = Math.floor(words.length / 2);
-      const targetWord = words[midIndex];
-      const orpIndex = getORPIndex(targetWord);
-      
-      const beforeWords = words.slice(0, midIndex).join(' ');
-      const afterWords = words.slice(midIndex + 1).join(' ');
-      
+      // For multiple words, pick the letter closest to the chunk center.
+      const centerIndex = Math.floor(word.length / 2);
+      let focusIndex = -1;
+
+      const isValidFocusChar = (char: string) => /[a-zA-Z0-9]/.test(char);
+
+      for (let offset = 0; offset <= word.length; offset += 1) {
+        const leftIndex = centerIndex - offset;
+        const rightIndex = centerIndex + offset;
+        if (leftIndex >= 0 && isValidFocusChar(word[leftIndex])) {
+          focusIndex = leftIndex;
+          break;
+        }
+        if (rightIndex < word.length && isValidFocusChar(word[rightIndex])) {
+          focusIndex = rightIndex;
+          break;
+        }
+      }
+
+      if (focusIndex < 0) {
+        focusIndex = Math.max(0, Math.min(word.length - 1, centerIndex));
+      }
+
       return {
-        before: beforeWords + (beforeWords ? ' ' : '') + targetWord.slice(0, orpIndex),
-        focal: targetWord[orpIndex] || '',
-        after: targetWord.slice(orpIndex + 1) + (afterWords ? ' ' + afterWords : ''),
+        before: word.slice(0, focusIndex),
+        focal: word[focusIndex] || '',
+        after: word.slice(focusIndex + 1),
       };
     }
     
@@ -75,7 +103,7 @@ export const WordDisplay = ({ word, fontSize, isKeyTerm, highlightScore = 0 }: W
         
         {/* Word container: flex so focal letter sits under the ORP line */}
         <div 
-          className={`font-mono tracking-wide animate-word-enter flex items-center whitespace-nowrap relative w-full ${
+          className={`font-mono tracking-wide animate-word-enter flex items-center gap-[0.025em] whitespace-nowrap relative w-full ${
             highlightScore > 0 ? 'rsvp-highlighted-word' : ''
           } ${isKeyTerm ? 'ring-2 ring-primary/30 ring-offset-4 ring-offset-background rounded-lg px-4' : ''}`}
           style={{
