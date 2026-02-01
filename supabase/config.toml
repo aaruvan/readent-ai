@@ -1,4 +1,7 @@
-project_id = "quofqqvjpsnjjnkhyqcl"
+project_id = "qtefbcruzqrzsswsegpx"
 
 [functions.ai-reader]
+verify_jwt = false
+
+[functions.smart-pacer]
 verify_jwt = false

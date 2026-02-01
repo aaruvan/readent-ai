@@ -1,0 +1,173 @@
+body {
+  width: 320px;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+.popup-container {
+  padding: 16px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.popup-header h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.version {
+  font-size: 12px;
+  color: #888;
+}
+
+.popup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.selection-preview {
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  min-height: 60px;
+}
+
+.selection-preview .placeholder,
+.selection-preview .preview-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #444;
+}
+
+.selection-preview .placeholder kbd {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: #ddd;
+  border-radius: 4px;
+}
+
+.selection-preview .preview-text {
+  color: #222;
+}
+
+.selection-preview .error {
+  margin: 0;
+  color: #c00;
+  font-size: 13px;
+}
+
+.word-count {
+  font-size: 12px;
+  color: #666;
+}
+
+.start-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: #e85d04;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.start-btn:hover:not(:disabled) {
+  background: #d45303;
+}
+
+.start-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  font-size: 12px;
+}
+
+.settings-section h3,
+.shortcuts-section h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.setting-row label {
+  font-size: 13px;
+  color: #444;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-control input[type="range"] {
+  width: 100px;
+}
+
+.setting-control span {
+  min-width: 3ch;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.shortcuts-section {
+  margin-top: 4px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.shortcut-row .key {
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 11px;
+  background: #eee;
+  border-radius: 4px;
+  min-width: 80px;
+}
+
+.shortcut-row span:last-child {
+  color: #666;
+}
+
+.popup-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.popup-footer p {
+  margin: 0;
+  font-size: 12px;
+  color: #888;
+}

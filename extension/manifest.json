@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Swift Insight Reader",
+  "version": "1.0.0",
+  "description": "RSVP speed reader: select text and read word-by-word with adaptive pacing, ORP highlight, and keyboard shortcuts.",
+  "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Speed read selected text"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-reader": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "Toggle RSVP reader with selected text"
+    },
+    "toggle-play": {
+      "suggested_key": {
+        "default": "Alt+Space"
+      },
+      "description": "Play/Pause reading"
+    }
+  }
+}
