@@ -58,6 +58,7 @@ Open the URL printed in the terminal. When enabling eye tracking, allow camera a
 3. Click **Load unpacked**.
 4. Select the `extension` folder in this repo.
 5. Open any article, select text, then click the extension icon to start reading.
+6. Local focus detection opens the web app at `http://localhost:8080` by default.
 
 ## Features to explore
 
