@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const wordCount = document.getElementById('word-count');
   const startBtn = document.getElementById('speed-read');
   const summarizeBtn = document.getElementById('summarize-read');
+  const focusBtn = document.getElementById('focus-detection');
   const wpmSlider = document.getElementById('default-wpm');
   const wpmDisplay = document.getElementById('wpm-display');
 
@@ -85,6 +86,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       chrome.runtime.sendMessage({ action: 'startReaderFromPopup', text: selectedText, summarize: true });
       window.close();
     }
+  });
+
+  focusBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'http://localhost:8080' });
+    window.close();
   });
 
   // WPM slider

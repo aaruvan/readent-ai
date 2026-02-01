@@ -94,6 +94,16 @@ body {
   background: #5b636a;
 }
 
+.start-btn.start-btn-tertiary {
+  background: rgba(255, 0, 106, 0.12);
+  color: rgb(255, 0, 106);
+  border: 1px solid rgba(255, 0, 106, 0.35);
+}
+
+.start-btn.start-btn-tertiary:hover:not(:disabled) {
+  background: rgba(255, 0, 106, 0.2);
+}
+
 .start-btn:hover:not(:disabled) {
   background: #d45303;
 }
