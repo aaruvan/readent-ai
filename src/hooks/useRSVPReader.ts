@@ -89,6 +89,18 @@ const calculateWordDelay = (
   return baseDelay * multiplier;
 };
 
+/** Clean text: normalize whitespace, remove invisible chars, strip emojis. */
+const cleanText = (text: string): string => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/\r\n|\r/g, '\n')
+    .replace(/[\t\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.ceil(seconds)}s`;
   const mins = Math.floor(seconds / 60);
@@ -243,7 +255,8 @@ export const useRSVPReader = (): UseRSVPReaderReturn => {
   }, [words.length, isPlaying, scheduleNextWord]);
 
   const setText = useCallback((text: string) => {
-    const parsed = text
+    const cleaned = cleanText(text);
+    const parsed = cleaned
       .split(/\s+/)
       .filter((word) => word.length > 0);
     setWords(parsed);

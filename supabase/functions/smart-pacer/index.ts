@@ -28,13 +28,14 @@ interface DisplayUnit {
 const PROMPT_ID = "3d599ae814694279a38a70329c3a87a9";
 const SEGMENT_MAX_WORDS = 100;
 
-/** Clean text before LLM: normalize whitespace, remove invisible chars. */
+/** Clean text before LLM: normalize whitespace, remove invisible chars, strip emojis. */
 function cleanText(text: string): string {
   if (typeof text !== "string") return "";
   return text
     .replace(/\r\n|\r/g, "\n")
     .replace(/[\t\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, " ")
     .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .replace(/\p{Extended_Pictographic}/gu, "")
     .replace(/\s+/g, " ")
     .trim();
 }

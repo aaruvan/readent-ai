@@ -6,13 +6,14 @@
 (function () {
   const OVERLAY_ID = 'swift-insight-reader-root';
 
-  /** Clean text before display and LLM: normalize whitespace, remove invisible chars. */
+  /** Clean text before display and LLM: normalize whitespace, remove invisible chars, strip emojis. */
   function cleanText(text) {
     if (typeof text !== 'string') return '';
     let t = text
       .replace(/\r\n|\r/g, '\n')
       .replace(/[\t\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
       .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+      .replace(/\p{Extended_Pictographic}/gu, '')
       .replace(/\s+/g, ' ')
       .trim();
     return t;
