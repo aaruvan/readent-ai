@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Swift Insight Reader",
+  "name": "Readent",
   "version": "1.0.0",
   "description": "RSVP speed reader: select text and read word-by-word with adaptive pacing, ORP highlight, and keyboard shortcuts.",
   "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
