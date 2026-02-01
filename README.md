@@ -4,6 +4,8 @@ Browser extension + web app for attention‑aware speed reading with AI summariz
 
 Repo: https://github.com/aaruvan/readent-ai
 
+Quick shortcut: press `Option + R` (macOS) or `Alt + R` (Windows/Linux) to open Readent.
+
 ## Prerequisites
 
 - Node.js 18+
