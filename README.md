@@ -1,6 +1,7 @@
 # Swift Insight Reader
 
 Browser extension + web app for attention‑aware speed reading with AI summarizing.
+Note: please use the extension for the full experience; eye tracking on the web app is beta.
 
 Repo: https://github.com/aaruvan/readent-ai
 

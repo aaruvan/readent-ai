@@ -99,7 +99,7 @@ const Index = () => {
             </div>
 
             <div className="mt-8 text-sm text-muted-foreground">
-              Want AI summarizing? Try the browser extension in `extension/`.
+              Want next‑gen AI summarization? Check out the browser extension.
             </div>
 
             {/* Feature highlights */}

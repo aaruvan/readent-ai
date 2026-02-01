@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Brain, Sparkles, Eye, Briefcase, Scale, Stethoscope, Cpu, Loader2 } from 'lucide-react';
+import { Brain, Eye, Briefcase, Scale, Stethoscope, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -30,13 +30,6 @@ interface AISettingsPanelProps {
   industryMode: IndustryMode;
   onIndustryModeChange: (mode: IndustryMode) => void;
   
-  // Summarization
-  onSummarize: (length: 'brief' | 'detailed') => void;
-  isSummarizing: boolean;
-  pendingSummary: 'brief' | 'detailed' | null;
-  textMode: 'original' | 'brief' | 'detailed';
-  onRestoreOriginal: () => void;
-  
   // Eye tracking status
   isLookingAway?: boolean;
 }
@@ -55,11 +48,6 @@ export const AISettingsPanel = ({
   onEyeTrackingChange,
   industryMode,
   onIndustryModeChange,
-  onSummarize,
-  isSummarizing,
-  pendingSummary,
-  textMode,
-  onRestoreOriginal,
   isLookingAway,
 }: AISettingsPanelProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,57 +80,6 @@ export const AISettingsPanel = ({
         </SheetHeader>
 
         <div className="space-y-6 mt-6">
-          {/* AI Summarization */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h4 className="font-medium">AI Summarization</h4>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Condense your text into key points before reading
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onSummarize('brief')}
-                disabled={isSummarizing}
-                className="flex-1"
-                aria-busy={isSummarizing && pendingSummary === 'brief'}
-              >
-                {isSummarizing && pendingSummary === 'brief' ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : null}
-                Brief
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onSummarize('detailed')}
-                disabled={isSummarizing}
-                className="flex-1"
-                aria-busy={isSummarizing && pendingSummary === 'detailed'}
-              >
-                {isSummarizing && pendingSummary === 'detailed' ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : null}
-                Detailed
-              </Button>
-            </div>
-            {textMode !== 'original' && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onRestoreOriginal}
-                className="w-full"
-              >
-                Use Original Text
-              </Button>
-            )}
-          </div>
-
-          <Separator />
-
           {/* Smart Pacing */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

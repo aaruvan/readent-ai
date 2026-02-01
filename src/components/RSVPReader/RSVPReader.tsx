@@ -353,11 +353,6 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
               onEyeTrackingChange={setEyeTrackingEnabled}
               industryMode={industryMode}
               onIndustryModeChange={setIndustryMode}
-              onSummarize={handleSummarize}
-              isSummarizing={isAILoading}
-              pendingSummary={pendingSummary}
-              textMode={textMode}
-              onRestoreOriginal={handleRestoreOriginal}
               isLookingAway={isLookingAway}
             />
           }
