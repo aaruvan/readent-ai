@@ -1,73 +1,49 @@
-# Welcome to your Lovable project
+# Swift Insight Reader
 
-## Project info
+Minimal speed-reading system with a web app and a browser extension.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Prerequisites
 
-## How can I edit this code?
+- Node.js 18+
+- npm
+- A Chromium browser (Chrome, Edge, Brave)
 
-There are several ways of editing your application.
+## Web app (with eye tracking)
 
-**Use Lovable**
+1. Install dependencies:
+   ```sh
+   npm install
+   ```
+2. Create a `.env` file if needed and add Supabase keys used by the app.
+3. Start the dev server:
+   ```sh
+   npm run dev
+   ```
+4. Open the app at the URL printed in the terminal.
+5. When enabling eye tracking, allow camera access in the browser.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Browser extension
 
-Changes made via Lovable will be committed automatically to this repo.
+1. Build the web app if you plan to point the extension to local content:
+   ```sh
+   npm run dev
+   ```
+2. Load the extension in Chrome:
+   - Open `chrome://extensions`
+   - Enable Developer mode
+   - Click "Load unpacked"
+   - Select the `extension` folder in this repo
+3. Open any article, select text, and use the extension popup to start reading.
 
-**Use your preferred IDE**
+## Development notes
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Extension source is in `extension/`
+- Web app source is in `src/`
+- Supabase functions live in `supabase/functions/`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+## Tech stack
 
 - Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
 - Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
