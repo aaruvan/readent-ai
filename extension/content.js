@@ -65,6 +65,33 @@
     return secs > 0 ? mins + 'm ' + secs + 's' : mins + 'm';
   }
 
+  async function loadEyeTracker(onAttentionChange) {
+    const moduleUrl = chrome.runtime?.getURL ? chrome.runtime.getURL('vendor/face-detector-tracker.js') : '';
+    if (!moduleUrl) {
+      return { tracker: null, error: 'Extension runtime URL is unavailable.' };
+    }
+    try {
+      const mod = await import(moduleUrl);
+      if (!mod?.startFaceDetector || !mod?.stopFaceDetector) {
+        return { tracker: null, error: 'Face detector bundle missing or invalid. Run npm run build:extension and reload.' };
+      }
+      const tracker = {
+        supported: true,
+        label: 'camera',
+        stop: () => mod.stopFaceDetector(),
+        start: async () => {
+          const handle = await mod.startFaceDetector(onAttentionChange);
+          if (handle?.label) tracker.label = handle.label;
+          if (handle?.stop) tracker.stop = handle.stop;
+        },
+      };
+      return { tracker, error: null };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load face detector bundle.';
+      return { tracker: null, error: msg };
+    }
+  }
+
   function showToast(message) {
     let el = document.getElementById(TOAST_ID);
     if (!el) {
@@ -82,11 +109,16 @@
   }
 
   let keydownHandler = null;
+  let overlayCleanup = null;
 
   function closeOverlay() {
     if (keydownHandler) {
       document.removeEventListener('keydown', keydownHandler);
       keydownHandler = null;
+    }
+    if (overlayCleanup) {
+      overlayCleanup();
+      overlayCleanup = null;
     }
     const root = document.getElementById(OVERLAY_ID);
     if (root) root.remove();
@@ -105,6 +137,7 @@
 
     // Load saved settings from storage
     const defaultSettings = { wpm: 300, wordsAtATime: 1, fontSize: 48 };
+    const eyeTrackingDefaults = { enabled: false, rewindWords: 6, rampWords: 10 };
     const smartPacerOpts = { industry: null, comprehension: 'normal', goal: 'maintain' };
     chrome.storage.sync.get(['rsvpSettings'], (result) => {
       const stored = result.rsvpSettings || {};
@@ -112,12 +145,15 @@
       if (stored.industry && stored.industry !== 'general') smartPacerOpts.industry = stored.industry;
       if (stored.comprehension) smartPacerOpts.comprehension = stored.comprehension;
       if (stored.goal) smartPacerOpts.goal = stored.goal;
+      if (typeof stored.eyeTrackingEnabled === 'boolean') eyeTrackingDefaults.enabled = stored.eyeTrackingEnabled;
+      if (stored.eyeTrackingRewindWords) eyeTrackingDefaults.rewindWords = stored.eyeTrackingRewindWords;
+      if (stored.eyeTrackingRampWords) eyeTrackingDefaults.rampWords = stored.eyeTrackingRampWords;
       const smartPacerOn = stored.smartPacerDefault !== false;
-      createOverlayWithSettings(words, defaultSettings, smartPacerOn, smartPacerOpts);
+      createOverlayWithSettings(words, defaultSettings, smartPacerOn, smartPacerOpts, eyeTrackingDefaults);
     });
   }
 
-  function createOverlayWithSettings(words, defaultSettings, smartPacerOnByDefault, smartPacerOpts) {
+  function createOverlayWithSettings(words, defaultSettings, smartPacerOnByDefault, smartPacerOpts, eyeTrackingDefaults) {
     if (document.getElementById(OVERLAY_ID)) closeOverlay();
 
     const state = {
@@ -132,6 +168,18 @@
       industry: smartPacerOpts.industry,
       comprehension: smartPacerOpts.comprehension,
       goal: smartPacerOpts.goal,
+      eyeTrackingEnabled: eyeTrackingDefaults.enabled,
+      eyeTrackingLoading: false,
+      attentionState: 'off',
+      attentionLostAt: null,
+      recoveryRemaining: 0,
+      recoveryTotal: eyeTrackingDefaults.rampWords,
+      rewindWords: eyeTrackingDefaults.rewindWords,
+      wasPlayingBeforeAttentionLoss: false,
+      eyeTracker: null,
+      eyeVideo: null,
+      cameraStream: null,
+      eyeDebug: '',
     };
 
     const root = document.createElement('div');
@@ -143,6 +191,18 @@
 
     const timeLeftEl = document.createElement('span');
     timeLeftEl.className = 'sir-time sir-time-left';
+
+    const attentionIndicator = document.createElement('div');
+    attentionIndicator.className = 'sir-attention-indicator sir-attention-off';
+    attentionIndicator.innerHTML = '<span class="sir-attention-dot"></span><span class="sir-attention-text">Eye off</span>';
+    const attentionDebug = document.createElement('span');
+    attentionDebug.className = 'sir-attention-debug';
+    attentionDebug.textContent = '';
+    attentionIndicator.appendChild(attentionDebug);
+    const attentionDebug2 = document.createElement('span');
+    attentionDebug2.className = 'sir-attention-debug';
+    attentionDebug2.textContent = '';
+    attentionIndicator.appendChild(attentionDebug2);
 
     const controlGroup = document.createElement('div');
     controlGroup.className = 'sir-control-group';
@@ -172,6 +232,7 @@
     const fontValueEl = fontWrap.querySelector('.sir-font-value');
 
     controlGroup.appendChild(timeLeftEl);
+    controlGroup.appendChild(attentionIndicator);
     controlGroup.appendChild(wpmWrap);
     controlGroup.appendChild(wpmSliderWrap);
     controlGroup.appendChild(wordsWrap);
@@ -211,6 +272,12 @@
           <option value="maintain" selected>Maintain</option>
           <option value="improve">Improve</option>
         </select>
+      </div>
+      <div class="sir-settings-row">
+        <label>Eye tracking</label>
+        <span class="sir-settings-toggle">
+          <input type="checkbox" class="sir-settings-eye-toggle" />
+        </span>
       </div>
     `;
 
@@ -365,6 +432,114 @@
       smartPacerBtn.classList.toggle('sir-smart-pacer-active', state.smartPacerEnabled);
       smartPacerBtn.classList.toggle('sir-smart-pacer-loading', state.smartPacerLoading);
       smartPacerBtn.disabled = state.smartPacerLoading;
+      updateAttentionIndicator();
+    }
+
+    function updateAttentionIndicator() {
+      const label = attentionIndicator.querySelector('.sir-attention-text');
+      attentionIndicator.classList.remove('sir-attention-lost', 'sir-attention-off');
+      if (!state.eyeTrackingEnabled) {
+        attentionIndicator.classList.add('sir-attention-off');
+        label.textContent = 'Eye off';
+        attentionDebug.textContent = '';
+        attentionDebug2.textContent = '';
+        return;
+      }
+      if (state.attentionState === 'inattentive') {
+        attentionIndicator.classList.add('sir-attention-lost');
+        label.textContent = 'Look back';
+      } else {
+        label.textContent = 'Face on';
+      }
+      if (state.eyeTrackingLoading) {
+        attentionDebug.textContent = '(loading)';
+      } else if (state.eyeTracker) {
+        attentionDebug.textContent = `(${state.eyeTracker.label || 'camera'})`;
+      } else {
+        attentionDebug.textContent = '(idle)';
+      }
+      attentionDebug2.textContent = state.eyeDebug || '';
+    }
+
+    function getRecoveryMultiplier() {
+      if (!state.recoveryRemaining) return 1;
+      const t = state.recoveryRemaining / Math.max(1, state.recoveryTotal);
+      return 1 + t * 0.8;
+    }
+
+    function handleAttentionChange(nextState, meta) {
+      state.attentionState = nextState;
+      if (meta) {
+        state.eyeDebug = meta;
+      }
+      updateAttentionIndicator();
+      if (nextState === 'inattentive') {
+        if (state.attentionLostAt == null) {
+          state.attentionLostAt = Date.now();
+          state.wasPlayingBeforeAttentionLoss = state.isPlaying;
+          if (state.isPlaying) pause();
+        }
+        return;
+      }
+
+      if (state.attentionLostAt != null) {
+        state.attentionLostAt = null;
+        state.currentIndex = Math.max(0, state.currentIndex - state.rewindWords);
+        state.recoveryRemaining = state.recoveryTotal;
+        updateWordDisplay();
+        updateTimeAndProgress();
+        if (state.wasPlayingBeforeAttentionLoss) {
+          play();
+        }
+      }
+    }
+
+    async function startEyeTracking() {
+      if (state.eyeTrackingLoading || state.eyeTracker) return;
+      state.eyeTrackingLoading = true;
+      updateControls();
+      try {
+        const { tracker, error } = await loadEyeTracker(handleAttentionChange);
+        if (!tracker) {
+          const msg = error ? `Face detector unavailable. ${error}` : 'Face detector failed to load.';
+          throw new Error(msg);
+        }
+        state.eyeTracker = tracker;
+        state.attentionState = 'attentive';
+        await tracker.start();
+      } catch (err) {
+        state.eyeTrackingEnabled = false;
+        state.attentionState = 'off';
+        showToast(err instanceof Error ? err.message : 'Camera permission required for eye tracking');
+      } finally {
+        state.eyeTrackingLoading = false;
+        updateControls();
+      }
+    }
+
+    function stopEyeTracking() {
+      if (state.eyeTracker?.stop) state.eyeTracker.stop();
+      state.eyeTracker = null;
+      state.eyeVideo = null;
+      state.cameraStream = null;
+      state.attentionState = 'off';
+      state.attentionLostAt = null;
+      updateControls();
+    }
+
+    function toggleEyeTracking(enabled) {
+      state.eyeTrackingEnabled = enabled;
+      if (enabled) {
+        startEyeTracking();
+      } else {
+        stopEyeTracking();
+      }
+      chrome.storage.sync.get(['rsvpSettings'], (result) => {
+        const s = result.rsvpSettings || {};
+        s.eyeTrackingEnabled = state.eyeTrackingEnabled;
+        chrome.storage.sync.set({ rsvpSettings: s });
+      });
+      updateControls();
     }
 
     async function fetchSmartPacing(silent) {
@@ -460,10 +635,13 @@
       if (state.pacingData && state.pacingData[i]) {
         aiMultiplier = state.pacingData[i].multiplier;
       }
-      const delay = calculateWordDelay(displayWords, baseDelay, aiMultiplier);
+      const delay = calculateWordDelay(displayWords, baseDelay, aiMultiplier) * getRecoveryMultiplier();
 
       state.timerId = setTimeout(() => {
         state.currentIndex = Math.min(i + s.wordsAtATime, w.length);
+        if (state.recoveryRemaining > 0) {
+          state.recoveryRemaining -= 1;
+        }
         updateWordDisplay();
         updateTimeAndProgress();
         if (state.currentIndex < w.length) {
@@ -564,9 +742,11 @@
     const industrySelect = settingsPopover.querySelector('.sir-settings-industry');
     const comprehensionSelect = settingsPopover.querySelector('.sir-settings-comprehension');
     const goalSelect = settingsPopover.querySelector('.sir-settings-goal');
+    const eyeToggle = settingsPopover.querySelector('.sir-settings-eye-toggle');
     industrySelect.value = state.industry || '';
     comprehensionSelect.value = state.comprehension;
     goalSelect.value = state.goal;
+    eyeToggle.checked = state.eyeTrackingEnabled;
 
     settingsBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -586,6 +766,16 @@
       });
     }
 
+    function persistEyeTrackingOpts() {
+      chrome.storage.sync.get(['rsvpSettings'], (result) => {
+        const s = result.rsvpSettings || {};
+        s.eyeTrackingEnabled = state.eyeTrackingEnabled;
+        s.eyeTrackingRewindWords = state.rewindWords;
+        s.eyeTrackingRampWords = state.recoveryTotal;
+        chrome.storage.sync.set({ rsvpSettings: s });
+      });
+    }
+
     industrySelect.addEventListener('change', () => {
       state.industry = industrySelect.value || null;
       persistSmartPacerOpts();
@@ -600,6 +790,11 @@
       state.goal = goalSelect.value;
       persistSmartPacerOpts();
       if (state.smartPacerEnabled) fetchSmartPacing(false);
+    });
+
+    eyeToggle.addEventListener('change', () => {
+      toggleEyeTracking(eyeToggle.checked);
+      persistEyeTrackingOpts();
     });
 
     btnPlay.addEventListener('click', togglePlay);
@@ -647,6 +842,16 @@
     keydownHandler = onKeyDown;
     document.addEventListener('keydown', keydownHandler);
 
+    const storageListener = (changes, area) => {
+      if (area !== 'sync' || !changes.rsvpSettings) return;
+      const next = changes.rsvpSettings.newValue || {};
+      if (typeof next.eyeTrackingEnabled === 'boolean' && next.eyeTrackingEnabled !== state.eyeTrackingEnabled) {
+        eyeToggle.checked = next.eyeTrackingEnabled;
+        toggleEyeTracking(next.eyeTrackingEnabled);
+      }
+    };
+    chrome.storage.onChanged.addListener(storageListener);
+
     // Initial render
     updateWordDisplay();
     updateTimeAndProgress();
@@ -656,6 +861,15 @@
     if (state.smartPacerEnabled) {
       fetchSmartPacing(true);
     }
+
+    if (state.eyeTrackingEnabled) {
+      startEyeTracking();
+    }
+
+    overlayCleanup = () => {
+      stopEyeTracking();
+      chrome.storage.onChanged.removeListener(storageListener);
+    };
   }
 
   function getSelectedText() {

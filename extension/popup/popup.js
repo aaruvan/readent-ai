@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startBtn = document.getElementById('speed-read');
   const wpmSlider = document.getElementById('default-wpm');
   const wpmDisplay = document.getElementById('wpm-display');
+  const eyeToggle = document.getElementById('eye-tracking-toggle');
 
   let selectedText = '';
 
@@ -14,6 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (result.rsvpSettings?.wpm) {
       wpmSlider.value = result.rsvpSettings.wpm;
       wpmDisplay.textContent = result.rsvpSettings.wpm;
+    }
+    if (typeof result.rsvpSettings?.eyeTrackingEnabled === 'boolean') {
+      eyeToggle.checked = result.rsvpSettings.eyeTrackingEnabled;
     }
   });
 
@@ -83,6 +87,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.sync.get(['rsvpSettings'], (result) => {
       const settings = result.rsvpSettings || {};
       settings.wpm = wpm;
+      chrome.storage.sync.set({ rsvpSettings: settings });
+    });
+  });
+
+  eyeToggle.addEventListener('change', () => {
+    chrome.storage.sync.get(['rsvpSettings'], (result) => {
+      const settings = result.rsvpSettings || {};
+      settings.eyeTrackingEnabled = eyeToggle.checked;
       chrome.storage.sync.set({ rsvpSettings: settings });
     });
   });

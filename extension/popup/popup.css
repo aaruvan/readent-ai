@@ -135,6 +135,12 @@ body {
   font-weight: 500;
 }
 
+.hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #666;
+}
+
 .shortcuts-section {
   margin-top: 4px;
 }

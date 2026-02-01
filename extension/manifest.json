@@ -3,7 +3,7 @@
   "name": "Swift Insight Reader",
   "version": "1.0.0",
   "description": "RSVP speed reader: select text and read word-by-word with adaptive pacing, ORP highlight, and keyboard shortcuts.",
-  "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
+  "permissions": ["activeTab", "scripting", "contextMenus", "storage", "videoCapture"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/popup.html",
@@ -18,6 +18,12 @@
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vendor/face-detector-tracker.js"],
+      "matches": ["<all_urls>"]
     }
   ],
   "commands": {

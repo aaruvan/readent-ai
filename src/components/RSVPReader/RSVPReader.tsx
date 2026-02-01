@@ -1,4 +1,4 @@
-import { useEffect, useCallback, forwardRef, useImperativeHandle, useState } from 'react';
+import { useEffect, useCallback, forwardRef, useImperativeHandle, useState, useRef } from 'react';
 import { useRSVPReader } from '@/hooks/useRSVPReader';
 import { useAIFeatures, type IndustryMode } from '@/hooks/useAIFeatures';
 import { useEyeTracking, calculateRewindPosition } from '@/hooks/useEyeTracking';
@@ -42,6 +42,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       settings,
       estimatedTimeLeft,
       pacingData,
+      speedMultiplier,
       setText,
       togglePlay,
       stop,
@@ -54,6 +55,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
       setWordsAtATime,
       setFontSize,
       setPacingData,
+      setSpeedMultiplier,
     } = useRSVPReader();
 
     const {
@@ -69,11 +71,17 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     const {
       isTracking,
       isLookingAway,
+      error: eyeError,
       startTracking,
       stopTracking,
     } = useEyeTracking({
       onLookAway: () => {
-        if (isPlaying && eyeTrackingEnabled) {
+        if (!eyeTrackingEnabled) return;
+        lastIndexRef.current = currentIndex;
+        wasPlayingBeforeAwayRef.current = isPlaying;
+        pendingRewindRef.current = true;
+        if (isPlaying) {
+          pausedByEyeRef.current = true;
           pause();
           toast({
             title: "Focus lost",
@@ -82,13 +90,16 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
         }
       },
       onLookBack: () => {
-        if (eyeTrackingEnabled && !isPlaying) {
-          // Rewind a bit and start with slower speed
-          const { newIndex, rampUpSpeed } = calculateRewindPosition(currentIndex, 5, words.length);
+        if (!eyeTrackingEnabled) return;
+        if (pendingRewindRef.current) {
+          pendingRewindRef.current = false;
+          pausedByEyeRef.current = false;
+          const rewindWords = Math.max(1, Math.min(6, Math.round(settings.wpm / 200)));
+          const baseIndex = lastIndexRef.current ?? currentIndex;
+          const { newIndex, rampUpSpeed } = calculateRewindPosition(baseIndex, rewindWords, words.length);
           goToPosition(newIndex);
           setRampUpMultiplier(rampUpSpeed);
           
-          // Gradually ramp up speed
           const rampInterval = setInterval(() => {
             setRampUpMultiplier(prev => {
               if (prev >= 1) {
@@ -98,16 +109,19 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
               return prev + 0.1;
             });
           }, 500);
-          
-          play();
+
+          if (wasPlayingBeforeAwayRef.current) {
+            play();
+          }
           toast({
             title: "Welcome back!",
-            description: "Rewinding a few words and ramping up speed.",
+            description: `Rewinding ~${rewindWords} words and ramping up speed.`,
           });
         }
       },
-      inactivityThreshold: 3000,
-      rewindAmount: 5,
+      lossMs: 0,
+      recoverMs: 0,
+      minFaceAreaRatio: 0.02,
     });
 
     // Expose methods via ref
@@ -130,13 +144,37 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
     }, [text, setText]);
 
     // Handle eye tracking toggle
+    const pausedByEyeRef = useRef(false);
+    const pendingRewindRef = useRef(false);
+    const wasPlayingBeforeAwayRef = useRef(false);
+    const lastIndexRef = useRef(0);
+
     useEffect(() => {
-      if (eyeTrackingEnabled && isPlaying) {
+      lastIndexRef.current = currentIndex;
+    }, [currentIndex]);
+
+    useEffect(() => {
+      if (eyeTrackingEnabled) {
         startTracking();
       } else {
         stopTracking();
       }
-    }, [eyeTrackingEnabled, isPlaying, startTracking, stopTracking]);
+    }, [eyeTrackingEnabled, startTracking, stopTracking]);
+
+    useEffect(() => {
+      if (eyeTrackingEnabled && isLookingAway && isPlaying) {
+        pausedByEyeRef.current = true;
+        pause();
+      }
+      if (eyeTrackingEnabled && !isLookingAway && pausedByEyeRef.current && !isPlaying) {
+        pausedByEyeRef.current = false;
+        play();
+      }
+    }, [eyeTrackingEnabled, isLookingAway, isPlaying, pause, play]);
+
+    useEffect(() => {
+      setSpeedMultiplier(rampUpMultiplier);
+    }, [rampUpMultiplier, setSpeedMultiplier]);
 
     // Handle smart pacing toggle
     useEffect(() => {
@@ -165,6 +203,16 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
         });
       }
     }, [aiError, toast]);
+
+    useEffect(() => {
+      if (eyeError) {
+        toast({
+          variant: "destructive",
+          title: "Eye tracking error",
+          description: eyeError,
+        });
+      }
+    }, [eyeError, toast]);
 
     // Handle summarization
     const handleSummarize = useCallback(async (length: 'brief' | 'detailed') => {
@@ -301,6 +349,7 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
               </div>
             </div>
           )}
+
         </div>
 
         {/* Playback controls */}
