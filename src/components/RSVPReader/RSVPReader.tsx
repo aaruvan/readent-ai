@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 interface RSVPReaderProps {
   text?: string;
   onClose?: () => void;
+  startWithEyeTracking?: boolean;
 }
 
 export interface RSVPReaderRef {
@@ -22,7 +23,7 @@ export interface RSVPReaderRef {
 }
 
 export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
-  ({ text, onClose }, ref) => {
+  ({ text, onClose, startWithEyeTracking }, ref) => {
     const { toast } = useToast();
     
     // AI Feature States
@@ -160,6 +161,12 @@ export const RSVPReader = forwardRef<RSVPReaderRef, RSVPReaderProps>(
         stopTracking();
       }
     }, [eyeTrackingEnabled, startTracking, stopTracking]);
+
+    useEffect(() => {
+      if (startWithEyeTracking) {
+        setEyeTrackingEnabled(true);
+      }
+    }, [startWithEyeTracking]);
 
     useEffect(() => {
       if (eyeTrackingEnabled && isLookingAway && isPlaying) {

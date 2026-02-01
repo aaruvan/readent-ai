@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { RSVPReader, RSVPReaderRef } from '@/components/RSVPReader';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +36,14 @@ const Index = () => {
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
         <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="flex justify-start mb-6">
+            <Link
+              to="/about"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1 rounded-full border border-border/60 bg-card/40 backdrop-blur-sm"
+            >
+              About Us
+            </Link>
+          </div>
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Sparkles className="w-4 h-4" />

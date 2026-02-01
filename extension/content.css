@@ -6,8 +6,9 @@
   inset: 0;
   z-index: 2147483647;
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
-  background: rgba(26, 24, 22, 0.97);
-  backdrop-filter: blur(20px);
+  background: rgb(26, 24, 22);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
