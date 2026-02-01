@@ -34,18 +34,24 @@
   function getORPIndex(word) {
     const clean = word.replace(/[^a-zA-Z0-9]/g, '');
     if (clean.length <= 1) return 0;
+    if (clean.length <= 2) return 0; /* short units like "cm", "m" -> first letter */
     if (clean.length <= 3) return 1;
     return Math.floor(clean.length * 0.3);
   }
 
+  const READENT_BRAND = 'readent.ai';
+
   function splitORP(word) {
     if (!word) return { before: '', focal: '', after: '' };
+    if (word.toLowerCase() === READENT_BRAND) {
+      return { before: '', focal: word, after: '' };
+    }
     const parts = word.split(' ');
     if (parts.length > 1) {
       const mid = Math.floor(parts.length / 2);
       const target = parts[mid];
       const orp = getORPIndex(target);
-      if (target.length <= 2) {
+      if (target.length <= 1) {
         return { before: word, focal: '', after: '' };
       }
       const beforeWords = parts.slice(0, mid).join(' ');
@@ -66,6 +72,7 @@
 
   function calculateWordDelay(word, baseDelay, aiMultiplier) {
     let multiplier = aiMultiplier;
+    const isReadent = word.toLowerCase() === READENT_BRAND;
     if (multiplier == null || !Number.isFinite(multiplier)) {
       multiplier = 1;
       if (word.length > 8) multiplier += 0.3;
@@ -76,7 +83,11 @@
       if (/^[A-Z]/.test(word) && word.length > 1) multiplier += 0.1;
     }
     multiplier = Math.max(0.5, Math.min(2, multiplier));
-    return baseDelay * multiplier;
+    let delay = baseDelay * multiplier;
+    if (isReadent && (aiMultiplier == null || !Number.isFinite(aiMultiplier))) {
+      delay += 100;
+    }
+    return delay;
   }
 
   function formatTime(seconds) {
@@ -251,16 +262,6 @@
     wpmWrap.className = 'sir-control-item';
     wpmWrap.innerHTML = '<label>WPM</label><button type="button" class="sir-btn-adj sir-wpm-down" aria-label="Decrease WPM">−</button><span class="sir-value sir-wpm-value">300</span><button type="button" class="sir-btn-adj sir-wpm-up" aria-label="Increase WPM">+</button>';
     const wpmValueEl = wpmWrap.querySelector('.sir-wpm-value');
-    const wpmSliderWrap = document.createElement('div');
-    const wpmSlider = document.createElement('input');
-    wpmSlider.type = 'range';
-    wpmSlider.min = 50;
-    wpmSlider.max = 1200;
-    wpmSlider.step = 25;
-    wpmSlider.value = state.settings.wpm;
-    wpmSlider.className = 'sir-wpm-slider';
-    wpmSliderWrap.appendChild(wpmSlider);
-
     const wordsWrap = document.createElement('div');
     wordsWrap.className = 'sir-control-item';
     wordsWrap.innerHTML = '<label>Words</label><button type="button" class="sir-btn-adj sir-words-down">−</button><span class="sir-value sir-words-value">1</span><button type="button" class="sir-btn-adj sir-words-up">+</button>';
@@ -271,10 +272,18 @@
     fontWrap.innerHTML = '<label>Size</label><button type="button" class="sir-btn-adj sir-font-down">−</button><span class="sir-value sir-font-value">48</span><button type="button" class="sir-btn-adj sir-font-up">+</button>';
     const fontValueEl = fontWrap.querySelector('.sir-font-value');
 
+    const sep = (cls) => {
+      const s = document.createElement('span');
+      s.className = cls;
+      s.setAttribute('aria-hidden', 'true');
+      return s;
+    };
     controlGroup.appendChild(timeLeftEl);
+    controlGroup.appendChild(sep('sir-control-sep'));
     controlGroup.appendChild(wpmWrap);
-    controlGroup.appendChild(wpmSliderWrap);
+    controlGroup.appendChild(sep('sir-control-sep'));
     controlGroup.appendChild(wordsWrap);
+    controlGroup.appendChild(sep('sir-control-sep'));
     controlGroup.appendChild(fontWrap);
 
     const iconTranslucent = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="10" height="10" rx="1" opacity="0.8"/><rect x="10" y="10" width="10" height="10" rx="1"/></svg>';
@@ -282,43 +291,47 @@
     const iconContext = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
     const iconSmart = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>';
     const iconGear = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+    const iconSummary = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>';
+
+    function wrapWithTooltip(btn, tooltipText) {
+      const wrap = document.createElement('span');
+      wrap.className = 'sir-btn-with-tooltip';
+      const tip = document.createElement('span');
+      tip.className = 'sir-tooltip';
+      tip.textContent = tooltipText;
+      wrap.appendChild(btn);
+      wrap.appendChild(tip);
+      return wrap;
+    }
     const iconSkipBack = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>';
-    const iconPlay = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    const iconPlay = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="8 5 8 19 18 12"/></svg>';
     const iconPause = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
     const iconSkipFwd = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>';
-    const iconStop = '<svg class="sir-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>';
+    const iconRestart = '<svg class="sir-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
 
     const translucentBtn = document.createElement('button');
     translucentBtn.type = 'button';
     translucentBtn.className = 'sir-translucent-btn';
-    translucentBtn.title = 'Toggle overlay transparency';
     translucentBtn.innerHTML = state.translucentOverlay ? iconOpaque : iconTranslucent;
 
     const summaryBtn = document.createElement('button');
     summaryBtn.type = 'button';
     summaryBtn.className = 'sir-summary-btn';
-    summaryBtn.title = 'Summarize text before reading';
-    summaryBtn.innerHTML = '<span class="sir-summary-icon">✨</span><span class="sir-summary-label">Summary</span>';
-
-    const summaryStatus = document.createElement('span');
-    summaryStatus.className = 'sir-summary-status';
+    summaryBtn.innerHTML = '<span class="sir-summary-icon">' + iconSummary + '</span>';
 
     const contextBtn = document.createElement('button');
     contextBtn.type = 'button';
     contextBtn.className = 'sir-context-btn';
-    contextBtn.title = 'Show surrounding text context';
     contextBtn.innerHTML = '<span class="sir-context-icon">' + iconContext + '</span>';
 
     const smartPacerBtn = document.createElement('button');
     smartPacerBtn.type = 'button';
     smartPacerBtn.className = 'sir-smart-pacer-btn';
-    smartPacerBtn.title = 'AI Smart Pacer: analyze text for adaptive pacing';
     smartPacerBtn.innerHTML = '<span class="sir-smart-pacer-icon"><span class="sir-smart-icon-svg">' + iconSmart + '</span><span class="sir-smart-spinner"></span></span>';
 
     const settingsBtn = document.createElement('button');
     settingsBtn.type = 'button';
     settingsBtn.className = 'sir-settings-btn';
-    settingsBtn.title = 'Smart Pacer settings';
     settingsBtn.innerHTML = iconGear;
     const settingsPopover = document.createElement('div');
     settingsPopover.className = 'sir-settings-popover sir-hidden';
@@ -351,12 +364,11 @@
 
     const rightGroup = document.createElement('div');
     rightGroup.className = 'sir-control-right';
-    rightGroup.appendChild(translucentBtn);
-    rightGroup.appendChild(summaryBtn);
-    rightGroup.appendChild(summaryStatus);
-    rightGroup.appendChild(contextBtn);
-    rightGroup.appendChild(smartPacerBtn);
-    rightGroup.appendChild(settingsWrap);
+    rightGroup.appendChild(wrapWithTooltip(translucentBtn, 'Toggle overlay transparency'));
+    rightGroup.appendChild(wrapWithTooltip(summaryBtn, 'Summarize text before reading'));
+    rightGroup.appendChild(wrapWithTooltip(contextBtn, 'Show surrounding sentence context'));
+    rightGroup.appendChild(wrapWithTooltip(smartPacerBtn, 'AI Smart Pacer: adaptive per-word pacing'));
+    rightGroup.appendChild(wrapWithTooltip(settingsWrap, 'Smart Pacer settings'));
     rightGroup.appendChild(closeBtn);
 
     controlBar.appendChild(controlGroup);
@@ -417,9 +429,20 @@
     const progressLabels = document.createElement('div');
     progressLabels.className = 'sir-progress-labels';
     const progressLabelsSpan = document.createElement('span');
+    progressLabelsSpan.className = 'sir-progress-count';
     const progressPct = document.createElement('span');
+    progressPct.className = 'sir-progress-pct';
+    const btnRestart = document.createElement('button');
+    btnRestart.type = 'button';
+    btnRestart.className = 'sir-btn-restart sir-tooltip sir-tooltip-top';
+    btnRestart.innerHTML = iconRestart;
+    btnRestart.setAttribute('data-tooltip', 'Restart');
+    const progressRight = document.createElement('span');
+    progressRight.className = 'sir-progress-right';
+    progressRight.appendChild(progressPct);
+    progressRight.appendChild(btnRestart);
     progressLabels.appendChild(progressLabelsSpan);
-    progressLabels.appendChild(progressPct);
+    progressLabels.appendChild(progressRight);
     progressWrap.appendChild(progressBar);
     progressWrap.appendChild(progressLabels);
 
@@ -427,28 +450,23 @@
     buttons.className = 'sir-buttons';
     const btnBack = document.createElement('button');
     btnBack.type = 'button';
-    btnBack.className = 'sir-btn-icon sir-skip-back';
+    btnBack.className = 'sir-btn-icon sir-skip-back sir-tooltip sir-tooltip-top';
     btnBack.innerHTML = iconSkipBack;
-    btnBack.title = 'Skip backward';
+    btnBack.setAttribute('data-tooltip', 'Skip backward');
     const btnPlay = document.createElement('button');
     btnPlay.type = 'button';
-    btnPlay.className = 'sir-btn-icon sir-btn-play sir-play-pause';
+    btnPlay.className = 'sir-btn-icon sir-btn-play sir-play-pause sir-tooltip sir-tooltip-top';
     btnPlay.innerHTML = iconPlay;
-    btnPlay.title = 'Play';
+    btnPlay.setAttribute('data-tooltip', 'Play');
     const btnFwd = document.createElement('button');
     btnFwd.type = 'button';
-    btnFwd.className = 'sir-btn-icon sir-skip-fwd';
+    btnFwd.className = 'sir-btn-icon sir-skip-fwd sir-tooltip sir-tooltip-top';
     btnFwd.innerHTML = iconSkipFwd;
-    btnFwd.title = 'Skip forward';
-    const btnStop = document.createElement('button');
-    btnStop.type = 'button';
-    btnStop.className = 'sir-btn-icon sir-stop';
-    btnStop.innerHTML = iconStop;
-    btnStop.title = 'Restart';
+    btnFwd.setAttribute('data-tooltip', 'Skip forward');
     buttons.appendChild(btnBack);
     buttons.appendChild(btnPlay);
     buttons.appendChild(btnFwd);
-    buttons.appendChild(btnStop);
+
     playback.appendChild(progressWrap);
     playback.appendChild(buttons);
 
@@ -631,29 +649,19 @@
 
     function updateControls() {
       wpmValueEl.textContent = state.settings.wpm;
-      wpmSlider.value = state.settings.wpm;
       wordsValueEl.textContent = state.settings.wordsAtATime;
       fontValueEl.textContent = state.settings.fontSize;
       btnPlay.innerHTML = state.isPlaying ? iconPause : iconPlay;
-      btnPlay.title = state.isPlaying ? 'Pause' : 'Play';
+      btnPlay.setAttribute('data-tooltip', state.isPlaying ? 'Pause' : 'Play');
       summaryBtn.classList.toggle('sir-summary-active', Boolean(state.summaryText));
       summaryBtn.classList.toggle('sir-summary-loading', state.summaryLoading);
       summaryBtn.disabled = state.summaryLoading;
-      summaryBtn.title = state.summaryText
-        ? (state.textSource === 'summary' ? 'Switch to original text' : 'Switch to summary')
-        : 'Summarize text before reading';
-      const summaryLabel = summaryBtn.querySelector('.sir-summary-label');
-      if (summaryLabel) {
-        summaryLabel.textContent = state.summaryText
-          ? (state.textSource === 'summary' ? 'Original' : 'Summary')
-          : 'Summary';
-      }
-      summaryStatus.textContent = state.summaryText
-        ? (state.textSource === 'summary' ? 'Summary on' : 'Original text')
-        : 'Original text';
-      summaryStatus.classList.toggle('sir-summary-status-active', state.textSource === 'summary');
-      if (state.summaryText && state.summaryHighlights.length) {
-        summaryStatus.textContent += ' • ' + state.summaryHighlights.length + ' highlights';
+      const summaryWrap = summaryBtn.closest('.sir-btn-with-tooltip');
+      const summaryTip = summaryWrap?.querySelector('.sir-tooltip');
+      if (summaryTip) {
+        summaryTip.textContent = state.summaryText
+          ? (state.textSource === 'summary' ? 'Switch to original text' : 'Switch to summary')
+          : 'Summarize text before reading';
       }
       contextBtn.classList.toggle('sir-context-active', state.settings.showContext);
       smartPacerBtn.classList.toggle('sir-smart-pacer-active', state.smartPacerEnabled);
@@ -939,7 +947,6 @@
     // --- Event listeners ---
     wpmWrap.querySelector('.sir-wpm-down').addEventListener('click', () => setWPM(state.settings.wpm - 25));
     wpmWrap.querySelector('.sir-wpm-up').addEventListener('click', () => setWPM(state.settings.wpm + 25));
-    wpmSlider.addEventListener('input', () => setWPM(Number(wpmSlider.value)));
 
     wordsWrap.querySelector('.sir-words-down').addEventListener('click', () => setWords(state.settings.wordsAtATime - 1));
     wordsWrap.querySelector('.sir-words-up').addEventListener('click', () => setWords(state.settings.wordsAtATime + 1));
@@ -951,7 +958,6 @@
       state.translucentOverlay = !state.translucentOverlay;
       root.classList.toggle('sir-translucent', state.translucentOverlay);
       translucentBtn.innerHTML = state.translucentOverlay ? iconOpaque : iconTranslucent;
-      translucentBtn.title = state.translucentOverlay ? 'Switch to opaque overlay' : 'Switch to translucent overlay';
       chrome.storage.sync.get(['rsvpSettings'], (result) => {
         const s = result.rsvpSettings || {};
         s.translucentOverlay = state.translucentOverlay;
@@ -1023,7 +1029,7 @@
     btnPlay.addEventListener('click', togglePlay);
     btnBack.addEventListener('click', () => skip(false));
     btnFwd.addEventListener('click', () => skip(true));
-    btnStop.addEventListener('click', stop);
+    btnRestart.addEventListener('click', stop);
 
     progressBar.addEventListener('input', () => seek(Number(progressBar.value)));
 
